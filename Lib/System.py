@@ -215,6 +215,7 @@ class Legacy:
     from Legacy import subprocess as _process;
     import time as _time;
 
+GenericAlias = type(list[int])
 Null = type[None]
 Object = object
 
