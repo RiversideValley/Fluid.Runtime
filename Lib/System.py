@@ -219,13 +219,13 @@ class Legacy:
         FILE_ATTRIBUTE_VIRTUAL = 65536
             
     import sys as _sys;
-    from Legacy import pathlib as _path;
-    from Legacy import zipimport as _zip;
-    from Legacy import csv as _csv;
-    from Legacy import turtle as _turtle;
-    from Legacy import socket as _socket;
-    from Legacy import random as _random;
-    from Legacy import subprocess as _process;
+#     from Legacy import pathlib as _path;
+#     from Legacy import zipimport as _zip;
+#     from Legacy import csv as _csv;
+#     from Legacy import turtle as _turtle;
+#     from Legacy import socket as _socket;
+#     from Legacy import random as _random;
+#     from Legacy import subprocess as _process;
     import time as _time;
 
 GenericAlias = type(list[int])
@@ -265,9 +265,9 @@ class Branding:
     Web = WebAssembly
     class Computer:
         """System.Branding.Computer"""
-        Name = Legacy._socket.gethostname()
+        # Name = Legacy._socket.gethostname()
         Interpreter = Legacy._sys.platform
-        Register = Legacy._os.name
+        # Register = Legacy._os.name
         class Platform:
             __copyright__ = """
                 Inspired by Python's default Platform module.
@@ -320,7 +320,7 @@ class Branding:
     class User:
         """System.Branding.User"""
         # Login = Legacy._os.getlogin()
-        UserName = f"{Login}@{Legacy._socket.gethostname()}"
+        # UserName = f"{Login}@{Legacy._socket.gethostname()}"
         class Interface:
             def DarkDetect():
                 #-----------------------------------------------------------------------------
@@ -382,8 +382,8 @@ class Processing:
     
     Foundation class for the purpose of spawning, viewing and managing processes on the user's computer."""
 
-    def Execute(ExecuteScript, ScriptTimeOut = Null, Language: str = "fl", IncludeFoundation = Null):
-        """System.Execute()
+    def Execute(ExecuteScript, ScriptTimeOut = Null, Language: str = "fl", IncludeFoundation: dict = Null):
+        """System.Processing.Execute()
     
         Foundation method for the purpose of executing Python code from a string."""
         if Language == "fl" or "py":
@@ -399,6 +399,10 @@ class Processing:
             return Legacy._process.call(ExecuteScript, timeout = ScriptTimeOut)
         else:
             raise NotImplementedError
+        
+    def Hault(HaultTime: float):
+        """System.Processing.Halt"""
+        Legacy._time.sleep(HaultTime)
 
     #class Task(Object):
         #if Branding.Computer.Interpreter is 
@@ -414,20 +418,21 @@ class Console:
     Not recommended for actual text display as part of a GUI application; use only for logging purposes.
     """
 
-    def WriteLine(Text: Null): # type: ignore
-        return print(Variables.Convert.String(Text))
+    def WriteLine(Text): # type: ignore
+        return print(str(Text))
 
-    def Write(Text: Null): # type: ignore
+    def Write(Text): # type: ignore
         return print(Variables.Convert.String(Text), end="")
 
 class Chronology:
-    def Time(TimeZone: str, WithSeconds=None):
+    UCTDataSource = Legacy._time.gmtime()
+    def Time(TimeZone: str = "UCT", WithSeconds=None):
         if TimeZone == "UCT":
             if WithSeconds == True:
-                return Null # TODO: implement time with seconds
                 return f"{Legacy._time.gmtime().tm_hour}:{Legacy._time.gmtime().tm_min}:{Legacy._time.gmtime().tm_sec}"
             else:
                 return f"{Legacy._time.gmtime().tm_hour}:{Legacy._time.gmtime().tm_min}"
+    Year = UCTDataSource
 
 class Explore:
     """System.Explore
