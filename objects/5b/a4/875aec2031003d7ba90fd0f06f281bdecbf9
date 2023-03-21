@@ -1,2 +1,6 @@
 [object]
 	state = initial
+[map "639957b6-a94f-3c18-8a69-6e71382b0fcc"]
+	object = d1c79c7247a8c27f458bc9ea62c080bb0ece730a
+	subtree = Lib
+	type = extract tree

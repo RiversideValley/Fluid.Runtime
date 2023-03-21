@@ -1,0 +1,8 @@
+[map "3de7a5ce-f24d-3257-9c4b-bdf1ef45ffe9"]
+	object = bb396eece44036a71427e7766fbb8e0247373102
+	subtree = Lib
+	type = expand tree
+[map "af183ee9-4b44-3e7a-ae40-7679c0e3f426"]
+	object = e3a30cb1b6fb88f7206f7284cbd0a85c359f87cc
+	path = Lib/Legacy
+	type = expand module

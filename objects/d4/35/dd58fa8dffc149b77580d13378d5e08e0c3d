@@ -2,3 +2,7 @@
 	object = b51a13d5d76baf541d00b932cced228c86f7a636
 	subtree = Source
 	type = extract tree
+[map "9336d9e2-b949-3c01-b88b-5f0e66963d68"]
+	object = 647bae6c520237b01d75e51adbc6048d95db30bc
+	subtree = Lib
+	type = expand tree
