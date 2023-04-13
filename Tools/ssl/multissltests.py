@@ -35,6 +35,7 @@ except ImportError:
     from urllib2 import urlopen, HTTPError
 import re
 import shutil
+import string
 import subprocess
 import sys
 import tarfile
@@ -358,7 +359,7 @@ class AbstractBuilder(object):
         env["LD_RUN_PATH"] = self.lib_dir
 
         log.info("Rebuilding Python modules")
-        cmd = ["make", "sharedmods", "checksharedmods"]
+        cmd = [sys.executable, os.path.join(PYTHONROOT, "setup.py"), "build"]
         self._subprocess_call(cmd, env=env)
         self.check_imports()
 
@@ -472,7 +473,7 @@ def main():
     start = datetime.now()
 
     if args.steps in {'modules', 'tests'}:
-        for name in ['Makefile.pre.in', 'Modules/_ssl.c']:
+        for name in ['setup.py', 'Modules/_ssl.c']:
             if not os.path.isfile(os.path.join(PYTHONROOT, name)):
                 parser.error(
                     "Must be executed from CPython build dir"

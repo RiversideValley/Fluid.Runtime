@@ -75,9 +75,9 @@ Dynamic Type Creation
 
    This function looks for items in *bases* that are not instances of
    :class:`type`, and returns a tuple where each such object that has
-   an ``__mro_entries__`` method is replaced with an unpacked result of
+   an :meth:`~object.__mro_entries__` method is replaced with an unpacked result of
    calling this method.  If a *bases* item is an instance of :class:`type`,
-   or it doesn't have an ``__mro_entries__`` method, then it is included in
+   or it doesn't have an :meth:`!__mro_entries__` method, then it is included in
    the return tuple unchanged.
 
    .. versionadded:: 3.7
@@ -417,12 +417,6 @@ Standard names are defined for the following types:
 
       .. versionadded:: 3.9
 
-   .. describe:: hash(proxy)
-
-      Return a hash of the underlying mapping.
-
-      .. versionadded:: 3.12
-
 
 Additional Utility Classes and Functions
 ----------------------------------------
@@ -486,7 +480,7 @@ Coroutine Utility Functions
    The generator-based coroutine is still a :term:`generator iterator`,
    but is also considered to be a :term:`coroutine` object and is
    :term:`awaitable`.  However, it may not necessarily implement
-   the :meth:`__await__` method.
+   the :meth:`~object.__await__` method.
 
    If *gen_func* is a generator function, it will be modified in-place.
 

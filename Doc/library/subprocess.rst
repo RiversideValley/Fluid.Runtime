@@ -111,7 +111,7 @@ underlying :class:`Popen` interface can be used directly.
       Added the *text* parameter, as a more understandable alias of *universal_newlines*.
       Added the *capture_output* parameter.
 
-   .. versionchanged:: 3.12
+   .. versionchanged:: 3.11.3
 
       Changed Windows shell search order for ``shell=True``. The current
       directory and ``%PATH%`` are replaced with ``%COMSPEC%`` and
@@ -278,14 +278,15 @@ default values. The arguments that are most commonly needed are:
 
    *stdin*, *stdout* and *stderr* specify the executed program's standard input,
    standard output and standard error file handles, respectively.  Valid values
-   are ``None``, :data:`PIPE`, :data:`DEVNULL`, an existing file descriptor (a
-   positive integer), and an existing :term:`file object` with a valid file
-   descriptor.  With the default settings of ``None``, no redirection will
-   occur.  :data:`PIPE` indicates that a new pipe to the child should be
-   created.  :data:`DEVNULL` indicates that the special file :data:`os.devnull`
-   will be used.  Additionally, *stderr* can be :data:`STDOUT`, which indicates
-   that the stderr data from the child process should be captured into the same
-   file handle as for *stdout*.
+   are :data:`PIPE`, :data:`DEVNULL`, an existing file descriptor (a positive
+   integer), an existing file object with a valid file descriptor, and ``None``.
+   :data:`PIPE` indicates that a new pipe to the child should be created.
+   :data:`DEVNULL` indicates that the special file :data:`os.devnull` will
+   be used.  With the default settings of ``None``, no redirection will occur;
+   the child's file handles will be inherited from the parent.
+   Additionally, *stderr* can be :data:`STDOUT`, which indicates that the
+   stderr data from the child process should be captured into the same file
+   handle as for *stdout*.
 
    .. index::
       single: universal newlines; subprocess module
@@ -495,7 +496,7 @@ functions.
       *executable* parameter accepts a bytes and :term:`path-like object`
       on Windows.
 
-   .. versionchanged:: 3.12
+   .. versionchanged:: 3.11.3
 
       Changed Windows shell search order for ``shell=True``. The current
       directory and ``%PATH%`` are replaced with ``%COMSPEC%`` and
@@ -505,14 +506,15 @@ functions.
 
    *stdin*, *stdout* and *stderr* specify the executed program's standard input,
    standard output and standard error file handles, respectively.  Valid values
-   are ``None``, :data:`PIPE`, :data:`DEVNULL`, an existing file descriptor (a
-   positive integer), and an existing :term:`file object` with a valid file
-   descriptor.  With the default settings of ``None``, no redirection will
-   occur.  :data:`PIPE` indicates that a new pipe to the child should be
-   created.  :data:`DEVNULL` indicates that the special file :data:`os.devnull`
-   will be used.  Additionally, *stderr* can be :data:`STDOUT`, which indicates
+   are :data:`PIPE`, :data:`DEVNULL`, an existing file descriptor (a positive
+   integer), an existing :term:`file object` with a valid file descriptor,
+   and ``None``.  :data:`PIPE` indicates that a new pipe to the child should
+   be created.  :data:`DEVNULL` indicates that the special file
+   :data:`os.devnull` will be used. With the default settings of ``None``,
+   no redirection will occur; the child's file handles will be inherited from
+   the parent.  Additionally, *stderr* can be :data:`STDOUT`, which indicates
    that the stderr data from the applications should be captured into the same
-   file handle as for *stdout*.
+   file handle as for stdout.
 
    If *preexec_fn* is set to a callable object, this object will be called in the
    child process just before the child is executed.
@@ -1174,7 +1176,7 @@ calls these functions.
    .. versionchanged:: 3.3
       *timeout* was added.
 
-   .. versionchanged:: 3.12
+   .. versionchanged:: 3.11.3
 
       Changed Windows shell search order for ``shell=True``. The current
       directory and ``%PATH%`` are replaced with ``%COMSPEC%`` and
@@ -1214,7 +1216,7 @@ calls these functions.
    .. versionchanged:: 3.3
       *timeout* was added.
 
-   .. versionchanged:: 3.12
+   .. versionchanged:: 3.11.3
 
       Changed Windows shell search order for ``shell=True``. The current
       directory and ``%PATH%`` are replaced with ``%COMSPEC%`` and
@@ -1277,7 +1279,7 @@ calls these functions.
    .. versionadded:: 3.7
       *text* was added as a more readable alias for *universal_newlines*.
 
-   .. versionchanged:: 3.12
+   .. versionchanged:: 3.11.3
 
       Changed Windows shell search order for ``shell=True``. The current
       directory and ``%PATH%`` are replaced with ``%COMSPEC%`` and
@@ -1622,7 +1624,7 @@ that.
 It is safe to set these to false on any Python version. They will have no
 effect on older versions when unsupported. Do not assume the attributes are
 available to read. Despite their names, a true value does not indicate that the
-corresponding function will be used, only that that it may be.
+corresponding function will be used, only that it may be.
 
 Please file issues any time you have to use these private knobs with a way to
 reproduce the issue you were seeing. Link to that issue from a comment in your

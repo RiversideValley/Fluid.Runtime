@@ -462,7 +462,6 @@ are always available.  They are listed here in alphabetical order.
       >>> class Shape:
       ...     def __dir__(self):
       ...         return ['area', 'perimeter', 'location']
-      ...
       >>> s = Shape()
       >>> dir(s)
       ['area', 'location', 'perimeter']
@@ -1444,8 +1443,9 @@ are always available.  They are listed here in alphabetical order.
    arguments are converted to text strings, :func:`print` cannot be used with
    binary mode file objects.  For these, use ``file.write(...)`` instead.
 
-   Whether the output is buffered is usually determined by *file*, but if the
-   *flush* keyword argument is true, the stream is forcibly flushed.
+   Output buffering is usually determined by *file*.
+   However, if *flush* is true, the stream is forcibly flushed.
+
 
    .. versionchanged:: 3.3
       Added the *flush* keyword argument.
@@ -1635,9 +1635,6 @@ are always available.  They are listed here in alphabetical order.
    example: ``a[start:stop:step]`` or ``a[start:stop, i]``.  See
    :func:`itertools.islice` for an alternate version that returns an iterator.
 
-   .. versionchanged:: 3.12
-      Slice objects are now :term:`hashable` (provided :attr:`~slice.start`,
-      :attr:`~slice.stop`, and :attr:`~slice.step` are hashable).
 
 .. function:: sorted(iterable, /, *, key=None, reverse=False)
 
@@ -1680,7 +1677,7 @@ are always available.  They are listed here in alphabetical order.
 
       class C:
           @staticmethod
-          def f(arg1, arg2, ...): ...
+          def f(arg1, arg2, argN): ...
 
    The ``@staticmethod`` form is a function :term:`decorator` -- see
    :ref:`function` for details.
@@ -1742,10 +1739,6 @@ are always available.  They are listed here in alphabetical order.
 
    .. versionchanged:: 3.8
       The *start* parameter can be specified as a keyword argument.
-
-   .. versionchanged:: 3.12 Summation of floats switched to an algorithm
-      that gives higher accuracy on most builds.
-
 
 .. class:: super()
            super(type, object_or_type=None)

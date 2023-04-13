@@ -52,7 +52,6 @@ Iterator            Arguments               Results                             
 Iterator                        Arguments                       Results                                             Example
 ============================    ============================    =================================================   =============================================================
 :func:`accumulate`              p [,func]                       p0, p0+p1, p0+p1+p2, ...                            ``accumulate([1,2,3,4,5]) --> 1 3 6 10 15``
-:func:`batched`                 p, n                            (p0, p1, ..., p_n-1), ...                           ``batched('ABCDEFG', n=3) --> ABC DEF G``
 :func:`chain`                   p, q, ...                       p0, p1, ... plast, q0, q1, ...                      ``chain('ABC', 'DEF') --> A B C D E F``
 :func:`chain.from_iterable`     iterable                        p0, p1, ... plast, q0, q1, ...                      ``chain.from_iterable(['ABC', 'DEF']) --> A B C D E F``
 :func:`compress`                data, selectors                 (d[0] if s[0]), (d[1] if s[1]), ...                 ``compress('ABCDEF', [1,0,1,0,1,1]) --> A C E F``
@@ -162,44 +161,6 @@ loops that truncate the stream.
 
     .. versionchanged:: 3.8
        Added the optional *initial* parameter.
-
-
-.. function:: batched(iterable, n)
-
-   Batch data from the *iterable* into tuples of length *n*. The last
-   batch may be shorter than *n*.
-
-   Loops over the input iterable and accumulates data into tuples up to
-   size *n*.  The input is consumed lazily, just enough to fill a batch.
-   The result is yielded as soon as the batch is full or when the input
-   iterable is exhausted:
-
-   .. doctest::
-
-      >>> flattened_data = ['roses', 'red', 'violets', 'blue', 'sugar', 'sweet']
-      >>> unflattened = list(batched(flattened_data, 2))
-      >>> unflattened
-      [('roses', 'red'), ('violets', 'blue'), ('sugar', 'sweet')]
-
-      >>> for batch in batched('ABCDEFG', 3):
-      ...     print(batch)
-      ...
-      ('A', 'B', 'C')
-      ('D', 'E', 'F')
-      ('G',)
-
-   Roughly equivalent to::
-
-      def batched(iterable, n):
-          # batched('ABCDEFG', 3) --> ABC DEF G
-          if n < 1:
-              raise ValueError('n must be at least one')
-          it = iter(iterable)
-          while (batch := tuple(islice(it, n))):
-              yield batch
-
-   .. versionadded:: 3.12
-
 
 .. function:: chain(*iterables)
 
@@ -709,7 +670,7 @@ loops that truncate the stream.
    the tee objects being informed.
 
    ``tee`` iterators are not threadsafe. A :exc:`RuntimeError` may be
-   raised when simultaneously using iterators returned by the same :func:`tee`
+   raised when using simultaneously iterators returned by the same :func:`tee`
    call, even if the original *iterable* is threadsafe.
 
    This itertool may require significant auxiliary storage (depending on how
@@ -838,10 +799,38 @@ which incur interpreter overhead.
        "Returns the sequence elements n times"
        return chain.from_iterable(repeat(tuple(iterable), n))
 
+   def batched(iterable, n):
+       "Batch data into tuples of length n. The last batch may be shorter."
+       # batched('ABCDEFG', 3) --> ABC DEF G
+       if n < 1:
+           raise ValueError('n must be at least one')
+       it = iter(iterable)
+       while batch := tuple(islice(it, n)):
+           yield batch
+
+   def grouper(iterable, n, *, incomplete='fill', fillvalue=None):
+       "Collect data into non-overlapping fixed-length chunks or blocks"
+       # grouper('ABCDEFG', 3, fillvalue='x') --> ABC DEF Gxx
+       # grouper('ABCDEFG', 3, incomplete='strict') --> ABC DEF ValueError
+       # grouper('ABCDEFG', 3, incomplete='ignore') --> ABC DEF
+       args = [iter(iterable)] * n
+       if incomplete == 'fill':
+           return zip_longest(*args, fillvalue=fillvalue)
+       if incomplete == 'strict':
+           return zip(*args, strict=True)
+       if incomplete == 'ignore':
+           return zip(*args)
+       else:
+           raise ValueError('Expected fill, strict, or ignore')
+
+   def sumprod(vec1, vec2):
+       "Compute a sum of products."
+       return sum(starmap(operator.mul, zip(vec1, vec2, strict=True)))
+
    def sum_of_squares(it):
        "Add up the squares of the input values."
        # sum_of_squares([10, 20, 30]) -> 1400
-       return math.sumprod(*tee(it))
+       return sumprod(*tee(it))
 
    def transpose(it):
        "Swap the rows and columns of the input."
@@ -852,7 +841,7 @@ which incur interpreter overhead.
        "Multiply two matrices."
        # matmul([(7, 5), (3, 5)], [[2, 5], [7, 9]]) --> (49, 80), (41, 60)
        n = len(m2[0])
-       return batched(starmap(math.sumprod, product(m1, transpose(m2))), n)
+       return batched(starmap(sumprod, product(m1, transpose(m2))), n)
 
    def convolve(signal, kernel):
        # See:  https://betterexplained.com/articles/intuitive-convolution/
@@ -864,7 +853,7 @@ which incur interpreter overhead.
        window = collections.deque([0], maxlen=n) * n
        for x in chain(signal, repeat(0, n-1)):
            window.append(x)
-           yield math.sumprod(kernel, window)
+           yield sumprod(kernel, window)
 
    def polynomial_from_roots(roots):
        """Compute a polynomial's coefficients from its roots.
@@ -872,11 +861,23 @@ which incur interpreter overhead.
           (x - 5) (x + 4) (x - 3)  expands to:   x³ -4x² -17x + 60
        """
        # polynomial_from_roots([5, -4, 3]) --> [1, -4, -17, 60]
-       roots = list(map(operator.neg, roots))
-       return [
-           sum(map(math.prod, combinations(roots, k)))
-           for k in range(len(roots) + 1)
-       ]
+       expansion = [1]
+       for r in roots:
+           expansion = convolve(expansion, (1, -r))
+       return list(expansion)
+
+   def polynomial_eval(coefficients, x):
+       """Evaluate a polynomial at a specific value.
+
+       Computes with better numeric stability than Horner's method.
+       """
+       # Evaluate x³ -4x² -17x + 60 at x = 2.5
+       # polynomial_eval([1, -4, -17, 60], x=2.5) --> 8.125
+       n = len(coefficients)
+       if n == 0:
+           return x * 0  # coerce zero to the type of x
+       powers = map(pow, repeat(x), reversed(range(n)))
+       return sumprod(coefficients, powers)
 
    def iter_index(iterable, value, start=0):
        "Return indices where a value occurs in a sequence or iterable."
@@ -886,9 +887,12 @@ which incur interpreter overhead.
        except AttributeError:
            # Slow path for general iterables
            it = islice(iterable, start, None)
-           for i, element in enumerate(it, start):
-               if element is value or element == value:
-                   yield i
+           i = start - 1
+           try:
+               while True:
+                   yield (i := i + operator.indexOf(it, value) + 1)
+           except ValueError:
+               pass
        else:
            # Fast path for sequences
            i = start - 1
@@ -921,7 +925,7 @@ which incur interpreter overhead.
                n = quotient
                if n == 1:
                    return
-       if n >= 2:
+       if n > 1:
            yield n
 
    def flatten(list_of_lists):
@@ -936,21 +940,6 @@ which incur interpreter overhead.
        if times is None:
            return starmap(func, repeat(args))
        return starmap(func, repeat(args, times))
-
-   def grouper(iterable, n, *, incomplete='fill', fillvalue=None):
-       "Collect data into non-overlapping fixed-length chunks or blocks"
-       # grouper('ABCDEFG', 3, fillvalue='x') --> ABC DEF Gxx
-       # grouper('ABCDEFG', 3, incomplete='strict') --> ABC DEF ValueError
-       # grouper('ABCDEFG', 3, incomplete='ignore') --> ABC DEF
-       args = [iter(iterable)] * n
-       if incomplete == 'fill':
-           return zip_longest(*args, fillvalue=fillvalue)
-       if incomplete == 'strict':
-           return zip(*args, strict=True)
-       if incomplete == 'ignore':
-           return zip(*args)
-       else:
-           raise ValueError('Expected fill, strict, or ignore')
 
    def triplewise(iterable):
        "Return overlapping triplets from an iterable"
@@ -1223,6 +1212,9 @@ which incur interpreter overhead.
     >>> list(ncycles('abc', 3))
     ['a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c']
 
+    >>> sumprod([1,2,3], [4,5,6])
+    32
+
     >>> sum_of_squares([10, 20, 30])
     1400
 
@@ -1354,6 +1346,30 @@ which incur interpreter overhead.
 
     >>> list(grouper('abcdefg', n=3, incomplete='ignore'))
     [('a', 'b', 'c'), ('d', 'e', 'f')]
+
+    >>> list(batched('ABCDEFG', 3))
+    [('A', 'B', 'C'), ('D', 'E', 'F'), ('G',)]
+    >>> list(batched('ABCDEF', 3))
+    [('A', 'B', 'C'), ('D', 'E', 'F')]
+    >>> list(batched('ABCDE', 3))
+    [('A', 'B', 'C'), ('D', 'E')]
+    >>> list(batched('ABCD', 3))
+    [('A', 'B', 'C'), ('D',)]
+    >>> list(batched('ABC', 3))
+    [('A', 'B', 'C')]
+    >>> list(batched('AB', 3))
+    [('A', 'B')]
+    >>> list(batched('A', 3))
+    [('A',)]
+    >>> list(batched('', 3))
+    []
+    >>> list(batched('ABCDEFG', 2))
+    [('A', 'B'), ('C', 'D'), ('E', 'F'), ('G',)]
+    >>> list(batched('ABCDEFG', 1))
+    [('A',), ('B',), ('C',), ('D',), ('E',), ('F',), ('G',)]
+    >>> s = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    >>> all(list(flatten(batched(s[:n], 5))) == list(s[:n]) for n in range(len(s)))
+    True
 
     >>> list(triplewise('ABCDEFG'))
     [('A', 'B', 'C'), ('B', 'C', 'D'), ('C', 'D', 'E'), ('D', 'E', 'F'), ('E', 'F', 'G')]

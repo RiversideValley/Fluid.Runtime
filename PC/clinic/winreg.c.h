@@ -2,12 +2,6 @@
 preserve
 [clinic start generated code]*/
 
-#if defined(Py_BUILD_CORE) && !defined(Py_BUILD_CORE_MODULE)
-#  include "pycore_gc.h"            // PyGC_Head
-#  include "pycore_runtime.h"       // _Py_ID()
-#endif
-
-
 PyDoc_STRVAR(winreg_HKEYType_Close__doc__,
 "Close($self, /)\n"
 "--\n"
@@ -93,31 +87,8 @@ static PyObject *
 winreg_HKEYType___exit__(PyHKEYObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    #if defined(Py_BUILD_CORE) && !defined(Py_BUILD_CORE_MODULE)
-
-    #define NUM_KEYWORDS 3
-    static struct {
-        PyGC_Head _this_is_not_used;
-        PyObject_VAR_HEAD
-        PyObject *ob_item[NUM_KEYWORDS];
-    } _kwtuple = {
-        .ob_base = PyVarObject_HEAD_INIT(&PyTuple_Type, NUM_KEYWORDS)
-        .ob_item = { &_Py_ID(exc_type), &_Py_ID(exc_value), &_Py_ID(traceback), },
-    };
-    #undef NUM_KEYWORDS
-    #define KWTUPLE (&_kwtuple.ob_base.ob_base)
-
-    #else  // !Py_BUILD_CORE
-    #  define KWTUPLE NULL
-    #endif  // !Py_BUILD_CORE
-
     static const char * const _keywords[] = {"exc_type", "exc_value", "traceback", NULL};
-    static _PyArg_Parser _parser = {
-        .keywords = _keywords,
-        .fname = "__exit__",
-        .kwtuple = KWTUPLE,
-    };
-    #undef KWTUPLE
+    static _PyArg_Parser _parser = {NULL, _keywords, "__exit__", 0};
     PyObject *argsbuf[3];
     PyObject *exc_type;
     PyObject *exc_value;
@@ -188,7 +159,11 @@ winreg_ConnectRegistry(PyObject *module, PyObject *const *args, Py_ssize_t nargs
         computer_name = NULL;
     }
     else if (PyUnicode_Check(args[0])) {
+        #if USE_UNICODE_WCHAR_CACHE
+        computer_name = _PyUnicode_AsUnicode(args[0]);
+        #else /* USE_UNICODE_WCHAR_CACHE */
         computer_name = PyUnicode_AsWideCharString(args[0], NULL);
+        #endif /* USE_UNICODE_WCHAR_CACHE */
         if (computer_name == NULL) {
             goto exit;
         }
@@ -208,7 +183,9 @@ winreg_ConnectRegistry(PyObject *module, PyObject *const *args, Py_ssize_t nargs
 
 exit:
     /* Cleanup for computer_name */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)computer_name);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -256,7 +233,11 @@ winreg_CreateKey(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
         sub_key = NULL;
     }
     else if (PyUnicode_Check(args[1])) {
+        #if USE_UNICODE_WCHAR_CACHE
+        sub_key = _PyUnicode_AsUnicode(args[1]);
+        #else /* USE_UNICODE_WCHAR_CACHE */
         sub_key = PyUnicode_AsWideCharString(args[1], NULL);
+        #endif /* USE_UNICODE_WCHAR_CACHE */
         if (sub_key == NULL) {
             goto exit;
         }
@@ -273,7 +254,9 @@ winreg_CreateKey(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 
 exit:
     /* Cleanup for sub_key */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)sub_key);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -315,76 +298,18 @@ static PyObject *
 winreg_CreateKeyEx(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    #if defined(Py_BUILD_CORE) && !defined(Py_BUILD_CORE_MODULE)
-
-    #define NUM_KEYWORDS 4
-    static struct {
-        PyGC_Head _this_is_not_used;
-        PyObject_VAR_HEAD
-        PyObject *ob_item[NUM_KEYWORDS];
-    } _kwtuple = {
-        .ob_base = PyVarObject_HEAD_INIT(&PyTuple_Type, NUM_KEYWORDS)
-        .ob_item = { &_Py_ID(key), &_Py_ID(sub_key), &_Py_ID(reserved), &_Py_ID(access), },
-    };
-    #undef NUM_KEYWORDS
-    #define KWTUPLE (&_kwtuple.ob_base.ob_base)
-
-    #else  // !Py_BUILD_CORE
-    #  define KWTUPLE NULL
-    #endif  // !Py_BUILD_CORE
-
     static const char * const _keywords[] = {"key", "sub_key", "reserved", "access", NULL};
-    static _PyArg_Parser _parser = {
-        .keywords = _keywords,
-        .fname = "CreateKeyEx",
-        .kwtuple = KWTUPLE,
-    };
-    #undef KWTUPLE
-    PyObject *argsbuf[4];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 2;
+    static _PyArg_Parser _parser = {"O&O&|ii:CreateKeyEx", _keywords, 0};
     HKEY key;
     const Py_UNICODE *sub_key = NULL;
     int reserved = 0;
     REGSAM access = KEY_WRITE;
     HKEY _return_value;
 
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 2, 4, 0, argsbuf);
-    if (!args) {
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        clinic_HKEY_converter, &key, _PyUnicode_WideCharString_Opt_Converter, &sub_key, &reserved, &access)) {
         goto exit;
     }
-    if (!clinic_HKEY_converter(args[0], &key)) {
-        goto exit;
-    }
-    if (args[1] == Py_None) {
-        sub_key = NULL;
-    }
-    else if (PyUnicode_Check(args[1])) {
-        sub_key = PyUnicode_AsWideCharString(args[1], NULL);
-        if (sub_key == NULL) {
-            goto exit;
-        }
-    }
-    else {
-        _PyArg_BadArgument("CreateKeyEx", "argument 'sub_key'", "str or None", args[1]);
-        goto exit;
-    }
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-    if (args[2]) {
-        reserved = _PyLong_AsInt(args[2]);
-        if (reserved == -1 && PyErr_Occurred()) {
-            goto exit;
-        }
-        if (!--noptargs) {
-            goto skip_optional_pos;
-        }
-    }
-    access = _PyLong_AsInt(args[3]);
-    if (access == -1 && PyErr_Occurred()) {
-        goto exit;
-    }
-skip_optional_pos:
     _return_value = winreg_CreateKeyEx_impl(module, key, sub_key, reserved, access);
     if (_return_value == NULL) {
         goto exit;
@@ -393,7 +318,9 @@ skip_optional_pos:
 
 exit:
     /* Cleanup for sub_key */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)sub_key);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -439,7 +366,11 @@ winreg_DeleteKey(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
         _PyArg_BadArgument("DeleteKey", "argument 2", "str", args[1]);
         goto exit;
     }
+    #if USE_UNICODE_WCHAR_CACHE
+    sub_key = _PyUnicode_AsUnicode(args[1]);
+    #else /* USE_UNICODE_WCHAR_CACHE */
     sub_key = PyUnicode_AsWideCharString(args[1], NULL);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
     if (sub_key == NULL) {
         goto exit;
     }
@@ -447,7 +378,9 @@ winreg_DeleteKey(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 
 exit:
     /* Cleanup for sub_key */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)sub_key);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -492,75 +425,24 @@ static PyObject *
 winreg_DeleteKeyEx(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    #if defined(Py_BUILD_CORE) && !defined(Py_BUILD_CORE_MODULE)
-
-    #define NUM_KEYWORDS 4
-    static struct {
-        PyGC_Head _this_is_not_used;
-        PyObject_VAR_HEAD
-        PyObject *ob_item[NUM_KEYWORDS];
-    } _kwtuple = {
-        .ob_base = PyVarObject_HEAD_INIT(&PyTuple_Type, NUM_KEYWORDS)
-        .ob_item = { &_Py_ID(key), &_Py_ID(sub_key), &_Py_ID(access), &_Py_ID(reserved), },
-    };
-    #undef NUM_KEYWORDS
-    #define KWTUPLE (&_kwtuple.ob_base.ob_base)
-
-    #else  // !Py_BUILD_CORE
-    #  define KWTUPLE NULL
-    #endif  // !Py_BUILD_CORE
-
     static const char * const _keywords[] = {"key", "sub_key", "access", "reserved", NULL};
-    static _PyArg_Parser _parser = {
-        .keywords = _keywords,
-        .fname = "DeleteKeyEx",
-        .kwtuple = KWTUPLE,
-    };
-    #undef KWTUPLE
-    PyObject *argsbuf[4];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 2;
+    static _PyArg_Parser _parser = {"O&O&|ii:DeleteKeyEx", _keywords, 0};
     HKEY key;
     const Py_UNICODE *sub_key = NULL;
     REGSAM access = KEY_WOW64_64KEY;
     int reserved = 0;
 
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 2, 4, 0, argsbuf);
-    if (!args) {
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        clinic_HKEY_converter, &key, _PyUnicode_WideCharString_Converter, &sub_key, &access, &reserved)) {
         goto exit;
     }
-    if (!clinic_HKEY_converter(args[0], &key)) {
-        goto exit;
-    }
-    if (!PyUnicode_Check(args[1])) {
-        _PyArg_BadArgument("DeleteKeyEx", "argument 'sub_key'", "str", args[1]);
-        goto exit;
-    }
-    sub_key = PyUnicode_AsWideCharString(args[1], NULL);
-    if (sub_key == NULL) {
-        goto exit;
-    }
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-    if (args[2]) {
-        access = _PyLong_AsInt(args[2]);
-        if (access == -1 && PyErr_Occurred()) {
-            goto exit;
-        }
-        if (!--noptargs) {
-            goto skip_optional_pos;
-        }
-    }
-    reserved = _PyLong_AsInt(args[3]);
-    if (reserved == -1 && PyErr_Occurred()) {
-        goto exit;
-    }
-skip_optional_pos:
     return_value = winreg_DeleteKeyEx_impl(module, key, sub_key, access, reserved);
 
 exit:
     /* Cleanup for sub_key */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)sub_key);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -599,7 +481,11 @@ winreg_DeleteValue(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
         value = NULL;
     }
     else if (PyUnicode_Check(args[1])) {
+        #if USE_UNICODE_WCHAR_CACHE
+        value = _PyUnicode_AsUnicode(args[1]);
+        #else /* USE_UNICODE_WCHAR_CACHE */
         value = PyUnicode_AsWideCharString(args[1], NULL);
+        #endif /* USE_UNICODE_WCHAR_CACHE */
         if (value == NULL) {
             goto exit;
         }
@@ -612,7 +498,9 @@ winreg_DeleteValue(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 
 exit:
     /* Cleanup for value */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)value);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -737,7 +625,11 @@ winreg_ExpandEnvironmentStrings(PyObject *module, PyObject *arg)
         _PyArg_BadArgument("ExpandEnvironmentStrings", "argument", "str", arg);
         goto exit;
     }
+    #if USE_UNICODE_WCHAR_CACHE
+    string = _PyUnicode_AsUnicode(arg);
+    #else /* USE_UNICODE_WCHAR_CACHE */
     string = PyUnicode_AsWideCharString(arg, NULL);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
     if (string == NULL) {
         goto exit;
     }
@@ -745,7 +637,9 @@ winreg_ExpandEnvironmentStrings(PyObject *module, PyObject *arg)
 
 exit:
     /* Cleanup for string */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)string);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -843,7 +737,11 @@ winreg_LoadKey(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
         _PyArg_BadArgument("LoadKey", "argument 2", "str", args[1]);
         goto exit;
     }
+    #if USE_UNICODE_WCHAR_CACHE
+    sub_key = _PyUnicode_AsUnicode(args[1]);
+    #else /* USE_UNICODE_WCHAR_CACHE */
     sub_key = PyUnicode_AsWideCharString(args[1], NULL);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
     if (sub_key == NULL) {
         goto exit;
     }
@@ -851,7 +749,11 @@ winreg_LoadKey(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
         _PyArg_BadArgument("LoadKey", "argument 3", "str", args[2]);
         goto exit;
     }
+    #if USE_UNICODE_WCHAR_CACHE
+    file_name = _PyUnicode_AsUnicode(args[2]);
+    #else /* USE_UNICODE_WCHAR_CACHE */
     file_name = PyUnicode_AsWideCharString(args[2], NULL);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
     if (file_name == NULL) {
         goto exit;
     }
@@ -859,9 +761,13 @@ winreg_LoadKey(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 
 exit:
     /* Cleanup for sub_key */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)sub_key);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
     /* Cleanup for file_name */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)file_name);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -896,76 +802,18 @@ static PyObject *
 winreg_OpenKey(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    #if defined(Py_BUILD_CORE) && !defined(Py_BUILD_CORE_MODULE)
-
-    #define NUM_KEYWORDS 4
-    static struct {
-        PyGC_Head _this_is_not_used;
-        PyObject_VAR_HEAD
-        PyObject *ob_item[NUM_KEYWORDS];
-    } _kwtuple = {
-        .ob_base = PyVarObject_HEAD_INIT(&PyTuple_Type, NUM_KEYWORDS)
-        .ob_item = { &_Py_ID(key), &_Py_ID(sub_key), &_Py_ID(reserved), &_Py_ID(access), },
-    };
-    #undef NUM_KEYWORDS
-    #define KWTUPLE (&_kwtuple.ob_base.ob_base)
-
-    #else  // !Py_BUILD_CORE
-    #  define KWTUPLE NULL
-    #endif  // !Py_BUILD_CORE
-
     static const char * const _keywords[] = {"key", "sub_key", "reserved", "access", NULL};
-    static _PyArg_Parser _parser = {
-        .keywords = _keywords,
-        .fname = "OpenKey",
-        .kwtuple = KWTUPLE,
-    };
-    #undef KWTUPLE
-    PyObject *argsbuf[4];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 2;
+    static _PyArg_Parser _parser = {"O&O&|ii:OpenKey", _keywords, 0};
     HKEY key;
     const Py_UNICODE *sub_key = NULL;
     int reserved = 0;
     REGSAM access = KEY_READ;
     HKEY _return_value;
 
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 2, 4, 0, argsbuf);
-    if (!args) {
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        clinic_HKEY_converter, &key, _PyUnicode_WideCharString_Opt_Converter, &sub_key, &reserved, &access)) {
         goto exit;
     }
-    if (!clinic_HKEY_converter(args[0], &key)) {
-        goto exit;
-    }
-    if (args[1] == Py_None) {
-        sub_key = NULL;
-    }
-    else if (PyUnicode_Check(args[1])) {
-        sub_key = PyUnicode_AsWideCharString(args[1], NULL);
-        if (sub_key == NULL) {
-            goto exit;
-        }
-    }
-    else {
-        _PyArg_BadArgument("OpenKey", "argument 'sub_key'", "str or None", args[1]);
-        goto exit;
-    }
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-    if (args[2]) {
-        reserved = _PyLong_AsInt(args[2]);
-        if (reserved == -1 && PyErr_Occurred()) {
-            goto exit;
-        }
-        if (!--noptargs) {
-            goto skip_optional_pos;
-        }
-    }
-    access = _PyLong_AsInt(args[3]);
-    if (access == -1 && PyErr_Occurred()) {
-        goto exit;
-    }
-skip_optional_pos:
     _return_value = winreg_OpenKey_impl(module, key, sub_key, reserved, access);
     if (_return_value == NULL) {
         goto exit;
@@ -974,7 +822,9 @@ skip_optional_pos:
 
 exit:
     /* Cleanup for sub_key */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)sub_key);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -1009,76 +859,18 @@ static PyObject *
 winreg_OpenKeyEx(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
 {
     PyObject *return_value = NULL;
-    #if defined(Py_BUILD_CORE) && !defined(Py_BUILD_CORE_MODULE)
-
-    #define NUM_KEYWORDS 4
-    static struct {
-        PyGC_Head _this_is_not_used;
-        PyObject_VAR_HEAD
-        PyObject *ob_item[NUM_KEYWORDS];
-    } _kwtuple = {
-        .ob_base = PyVarObject_HEAD_INIT(&PyTuple_Type, NUM_KEYWORDS)
-        .ob_item = { &_Py_ID(key), &_Py_ID(sub_key), &_Py_ID(reserved), &_Py_ID(access), },
-    };
-    #undef NUM_KEYWORDS
-    #define KWTUPLE (&_kwtuple.ob_base.ob_base)
-
-    #else  // !Py_BUILD_CORE
-    #  define KWTUPLE NULL
-    #endif  // !Py_BUILD_CORE
-
     static const char * const _keywords[] = {"key", "sub_key", "reserved", "access", NULL};
-    static _PyArg_Parser _parser = {
-        .keywords = _keywords,
-        .fname = "OpenKeyEx",
-        .kwtuple = KWTUPLE,
-    };
-    #undef KWTUPLE
-    PyObject *argsbuf[4];
-    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 2;
+    static _PyArg_Parser _parser = {"O&O&|ii:OpenKeyEx", _keywords, 0};
     HKEY key;
     const Py_UNICODE *sub_key = NULL;
     int reserved = 0;
     REGSAM access = KEY_READ;
     HKEY _return_value;
 
-    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser, 2, 4, 0, argsbuf);
-    if (!args) {
+    if (!_PyArg_ParseStackAndKeywords(args, nargs, kwnames, &_parser,
+        clinic_HKEY_converter, &key, _PyUnicode_WideCharString_Opt_Converter, &sub_key, &reserved, &access)) {
         goto exit;
     }
-    if (!clinic_HKEY_converter(args[0], &key)) {
-        goto exit;
-    }
-    if (args[1] == Py_None) {
-        sub_key = NULL;
-    }
-    else if (PyUnicode_Check(args[1])) {
-        sub_key = PyUnicode_AsWideCharString(args[1], NULL);
-        if (sub_key == NULL) {
-            goto exit;
-        }
-    }
-    else {
-        _PyArg_BadArgument("OpenKeyEx", "argument 'sub_key'", "str or None", args[1]);
-        goto exit;
-    }
-    if (!noptargs) {
-        goto skip_optional_pos;
-    }
-    if (args[2]) {
-        reserved = _PyLong_AsInt(args[2]);
-        if (reserved == -1 && PyErr_Occurred()) {
-            goto exit;
-        }
-        if (!--noptargs) {
-            goto skip_optional_pos;
-        }
-    }
-    access = _PyLong_AsInt(args[3]);
-    if (access == -1 && PyErr_Occurred()) {
-        goto exit;
-    }
-skip_optional_pos:
     _return_value = winreg_OpenKeyEx_impl(module, key, sub_key, reserved, access);
     if (_return_value == NULL) {
         goto exit;
@@ -1087,7 +879,9 @@ skip_optional_pos:
 
 exit:
     /* Cleanup for sub_key */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)sub_key);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -1171,7 +965,11 @@ winreg_QueryValue(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
         sub_key = NULL;
     }
     else if (PyUnicode_Check(args[1])) {
+        #if USE_UNICODE_WCHAR_CACHE
+        sub_key = _PyUnicode_AsUnicode(args[1]);
+        #else /* USE_UNICODE_WCHAR_CACHE */
         sub_key = PyUnicode_AsWideCharString(args[1], NULL);
+        #endif /* USE_UNICODE_WCHAR_CACHE */
         if (sub_key == NULL) {
             goto exit;
         }
@@ -1184,7 +982,9 @@ winreg_QueryValue(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 
 exit:
     /* Cleanup for sub_key */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)sub_key);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -1228,7 +1028,11 @@ winreg_QueryValueEx(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
         name = NULL;
     }
     else if (PyUnicode_Check(args[1])) {
+        #if USE_UNICODE_WCHAR_CACHE
+        name = _PyUnicode_AsUnicode(args[1]);
+        #else /* USE_UNICODE_WCHAR_CACHE */
         name = PyUnicode_AsWideCharString(args[1], NULL);
+        #endif /* USE_UNICODE_WCHAR_CACHE */
         if (name == NULL) {
             goto exit;
         }
@@ -1241,7 +1045,9 @@ winreg_QueryValueEx(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 
 exit:
     /* Cleanup for name */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)name);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -1290,7 +1096,11 @@ winreg_SaveKey(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
         _PyArg_BadArgument("SaveKey", "argument 2", "str", args[1]);
         goto exit;
     }
+    #if USE_UNICODE_WCHAR_CACHE
+    file_name = _PyUnicode_AsUnicode(args[1]);
+    #else /* USE_UNICODE_WCHAR_CACHE */
     file_name = PyUnicode_AsWideCharString(args[1], NULL);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
     if (file_name == NULL) {
         goto exit;
     }
@@ -1298,7 +1108,9 @@ winreg_SaveKey(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
 
 exit:
     /* Cleanup for file_name */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)file_name);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -1345,41 +1157,17 @@ winreg_SetValue(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
     DWORD type;
     PyObject *value_obj;
 
-    if (!_PyArg_CheckPositional("SetValue", nargs, 4, 4)) {
+    if (!_PyArg_ParseStack(args, nargs, "O&O&kU:SetValue",
+        clinic_HKEY_converter, &key, _PyUnicode_WideCharString_Opt_Converter, &sub_key, &type, &value_obj)) {
         goto exit;
     }
-    if (!clinic_HKEY_converter(args[0], &key)) {
-        goto exit;
-    }
-    if (args[1] == Py_None) {
-        sub_key = NULL;
-    }
-    else if (PyUnicode_Check(args[1])) {
-        sub_key = PyUnicode_AsWideCharString(args[1], NULL);
-        if (sub_key == NULL) {
-            goto exit;
-        }
-    }
-    else {
-        _PyArg_BadArgument("SetValue", "argument 2", "str or None", args[1]);
-        goto exit;
-    }
-    if (!_PyLong_UnsignedLong_Converter(args[2], &type)) {
-        goto exit;
-    }
-    if (!PyUnicode_Check(args[3])) {
-        _PyArg_BadArgument("SetValue", "argument 4", "str", args[3]);
-        goto exit;
-    }
-    if (PyUnicode_READY(args[3]) == -1) {
-        goto exit;
-    }
-    value_obj = args[3];
     return_value = winreg_SetValue_impl(module, key, sub_key, type, value_obj);
 
 exit:
     /* Cleanup for sub_key */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)sub_key);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -1445,35 +1233,17 @@ winreg_SetValueEx(PyObject *module, PyObject *const *args, Py_ssize_t nargs)
     DWORD type;
     PyObject *value;
 
-    if (!_PyArg_CheckPositional("SetValueEx", nargs, 5, 5)) {
+    if (!_PyArg_ParseStack(args, nargs, "O&O&OkO:SetValueEx",
+        clinic_HKEY_converter, &key, _PyUnicode_WideCharString_Opt_Converter, &value_name, &reserved, &type, &value)) {
         goto exit;
     }
-    if (!clinic_HKEY_converter(args[0], &key)) {
-        goto exit;
-    }
-    if (args[1] == Py_None) {
-        value_name = NULL;
-    }
-    else if (PyUnicode_Check(args[1])) {
-        value_name = PyUnicode_AsWideCharString(args[1], NULL);
-        if (value_name == NULL) {
-            goto exit;
-        }
-    }
-    else {
-        _PyArg_BadArgument("SetValueEx", "argument 2", "str or None", args[1]);
-        goto exit;
-    }
-    reserved = args[2];
-    if (!_PyLong_UnsignedLong_Converter(args[3], &type)) {
-        goto exit;
-    }
-    value = args[4];
     return_value = winreg_SetValueEx_impl(module, key, value_name, reserved, type, value);
 
 exit:
     /* Cleanup for value_name */
+    #if !USE_UNICODE_WCHAR_CACHE
     PyMem_Free((void *)value_name);
+    #endif /* USE_UNICODE_WCHAR_CACHE */
 
     return return_value;
 }
@@ -1579,4 +1349,4 @@ winreg_QueryReflectionKey(PyObject *module, PyObject *arg)
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=7e817dc5edc914d3 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=e83bdaabb4fa2167 input=a9049054013a1b77]*/

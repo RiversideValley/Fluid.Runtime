@@ -82,8 +82,6 @@ PyObject *_PyLong_Add(PyLongObject *left, PyLongObject *right);
 PyObject *_PyLong_Multiply(PyLongObject *left, PyLongObject *right);
 PyObject *_PyLong_Subtract(PyLongObject *left, PyLongObject *right);
 
-int _PyLong_AssignValue(PyObject **target, Py_ssize_t value);
-
 /* Used by Python/mystrtoul.c, _PyBytes_FromHex(),
    _PyBytes_DecodeEscape(), etc. */
 PyAPI_DATA(unsigned char) _PyLong_DigitValue[256];
@@ -109,25 +107,6 @@ PyAPI_FUNC(char*) _PyLong_FormatBytesWriter(
     PyObject *obj,
     int base,
     int alternate);
-
-/* Return 1 if the argument is positive single digit int */
-static inline int
-_PyLong_IsPositiveSingleDigit(PyObject* sub) {
-    /*  For a positive single digit int, the value of Py_SIZE(sub) is 0 or 1.
-
-        We perform a fast check using a single comparison by casting from int
-        to uint which casts negative numbers to large positive numbers.
-        For details see Section 14.2 "Bounds Checking" in the Agner Fog
-        optimization manual found at:
-        https://www.agner.org/optimize/optimizing_cpp.pdf
-
-        The function is not affected by -fwrapv, -fno-wrapv and -ftrapv
-        compiler options of GCC and clang
-    */
-    assert(PyLong_CheckExact(sub));
-    Py_ssize_t signed_size = Py_SIZE(sub);
-    return ((size_t)signed_size) <= 1;
-}
 
 #ifdef __cplusplus
 }

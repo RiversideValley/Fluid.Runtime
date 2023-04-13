@@ -266,15 +266,6 @@ the :mod:`glob` module.)
       Accepts a :term:`path-like object`.
 
 
-.. function:: isjunction(path)
-
-   Return ``True`` if *path* refers to an :func:`existing <lexists>` directory
-   entry that is a junction.  Always return ``False`` if junctions are not
-   supported on the current platform.
-
-   .. versionadded:: 3.12
-
-
 .. function:: islink(path)
 
    Return ``True`` if *path* refers to an :func:`existing <exists>` directory
@@ -479,46 +470,13 @@ the :mod:`glob` module.)
       ("c:", "/dir")
 
    If the path contains a UNC path, drive will contain the host name
-   and share::
+   and share, up to but not including the fourth separator::
 
       >>> splitdrive("//host/computer/dir")
       ("//host/computer", "/dir")
 
    .. versionchanged:: 3.6
       Accepts a :term:`path-like object`.
-
-
-.. function:: splitroot(path)
-
-   Split the pathname *path* into a 3-item tuple ``(drive, root, tail)`` where
-   *drive* is a device name or mount point, *root* is a string of separators
-   after the drive, and *tail* is everything after the root. Any of these
-   items may be the empty string. In all cases, ``drive + root + tail`` will
-   be the same as *path*.
-
-   On POSIX systems, *drive* is always empty. The *root* may be empty (if *path* is
-   relative), a single forward slash (if *path* is absolute), or two forward slashes
-   (implementation-defined per `IEEE Std 1003.1-2017; 4.13 Pathname Resolution
-   <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13>`_.)
-   For example::
-
-      >>> splitroot('/home/sam')
-      ('', '/', 'home/sam')
-      >>> splitroot('//home/sam')
-      ('', '//', 'home/sam')
-      >>> splitroot('///home/sam')
-      ('', '/', '//home/sam')
-
-   On Windows, *drive* may be empty, a drive-letter name, a UNC share, or a device
-   name. The *root* may be empty, a forward slash, or a backward slash. For
-   example::
-
-      >>> splitroot('C:/Users/Sam')
-      ('C:', '/', 'Users/Sam')
-      >>> splitroot('//Server/Share/Users/Sam')
-      ('//Server/Share', '/', 'Users/Sam')
-
-   .. versionadded:: 3.12
 
 
 .. function:: splitext(path)

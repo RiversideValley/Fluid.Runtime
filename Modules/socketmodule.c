@@ -247,10 +247,6 @@ shutdown(how) -- shut down traffic in one or both directions\n\
 #include <net/if.h>
 #endif
 
-#ifdef HAVE_NET_ETHERNET_H
-#include <net/ethernet.h>
-#endif
-
 /* Generic socket object definitions and includes */
 #define PySocket_BUILDING_SOCKET
 #include "socketmodule.h"
@@ -276,9 +272,6 @@ shutdown(how) -- shut down traffic in one or both directions\n\
 # ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
 # endif
-
-/* Helpers needed for AF_HYPERV */
-# include <Rpc.h>
 
 /* Macros based on the IPPROTO enum, see: https://bugs.python.org/issue29515 */
 #ifdef MS_WINDOWS
@@ -1598,35 +1591,6 @@ makesockaddr(SOCKET_T sockfd, struct sockaddr *addr, size_t addrlen, int proto)
     }
 #endif /* HAVE_SOCKADDR_ALG */
 
-#ifdef HAVE_AF_HYPERV
-    case AF_HYPERV:
-    {
-        SOCKADDR_HV *a = (SOCKADDR_HV *) addr;
-
-        wchar_t *guidStr;
-        RPC_STATUS res = UuidToStringW(&a->VmId, &guidStr);
-        if (res != RPC_S_OK) {
-            PyErr_SetFromWindowsErr(res);
-            return 0;
-        }
-        PyObject *vmId = PyUnicode_FromWideChar(guidStr, -1);
-        res = RpcStringFreeW(&guidStr);
-        assert(res == RPC_S_OK);
-
-        res = UuidToStringW(&a->ServiceId, &guidStr);
-        if (res != RPC_S_OK) {
-            Py_DECREF(vmId);
-            PyErr_SetFromWindowsErr(res);
-            return 0;
-        }
-        PyObject *serviceId = PyUnicode_FromWideChar(guidStr, -1);
-        res = RpcStringFreeW(&guidStr);
-        assert(res == RPC_S_OK);
-
-        return Py_BuildValue("NN", vmId, serviceId);
-    }
-#endif /* AF_HYPERV */
-
     /* More cases here... */
 
     default:
@@ -2426,76 +2390,6 @@ getsockaddrarg(PySocketSockObject *s, PyObject *args,
         return 1;
     }
 #endif /* HAVE_SOCKADDR_ALG */
-#ifdef HAVE_AF_HYPERV
-    case AF_HYPERV:
-    {
-        switch (s->sock_proto) {
-        case HV_PROTOCOL_RAW:
-        {
-            PyObject *vm_id_obj = NULL;
-            PyObject *service_id_obj = NULL;
-
-            SOCKADDR_HV *addr = &addrbuf->hv;
-
-            memset(addr, 0, sizeof(*addr));
-            addr->Family = AF_HYPERV;
-
-            if (!PyTuple_Check(args)) {
-                PyErr_Format(PyExc_TypeError,
-                    "%s(): AF_HYPERV address must be tuple, not %.500s",
-                    caller, Py_TYPE(args)->tp_name);
-                return 0;
-            }
-            if (!PyArg_ParseTuple(args,
-                "UU;AF_HYPERV address must be a str tuple (vm_id, service_id)",
-                &vm_id_obj, &service_id_obj))
-            {
-                return 0;
-            }
-
-            wchar_t *guid_str = PyUnicode_AsWideCharString(vm_id_obj, NULL);
-            if (guid_str == NULL) {
-                PyErr_Format(PyExc_ValueError,
-                    "%s(): AF_HYPERV address vm_id is not a valid UUID string",
-                    caller);
-                return 0;
-            }
-            RPC_STATUS rc = UuidFromStringW(guid_str, &addr->VmId);
-            PyMem_Free(guid_str);
-            if (rc != RPC_S_OK) {
-                PyErr_Format(PyExc_ValueError,
-                    "%s(): AF_HYPERV address vm_id is not a valid UUID string",
-                    caller);
-                return 0;
-            }
-
-            guid_str = PyUnicode_AsWideCharString(service_id_obj, NULL);
-            if (guid_str == NULL) {
-                PyErr_Format(PyExc_ValueError,
-                    "%s(): AF_HYPERV address service_id is not a valid UUID string",
-                    caller);
-                return 0;
-            }
-            rc = UuidFromStringW(guid_str, &addr->ServiceId);
-            PyMem_Free(guid_str);
-            if (rc != RPC_S_OK) {
-                PyErr_Format(PyExc_ValueError,
-                    "%s(): AF_HYPERV address service_id is not a valid UUID string",
-                    caller);
-                return 0;
-            }
-
-            *len_ret = sizeof(*addr);
-            return 1;
-        }
-        default:
-            PyErr_Format(PyExc_OSError,
-                "%s(): unsupported AF_HYPERV protocol: %d",
-                caller, s->sock_proto);
-            return 0;
-        }
-    }
-#endif /* HAVE_AF_HYPERV */
 
     /* More cases here... */
 
@@ -2646,13 +2540,6 @@ getsockaddrlen(PySocketSockObject *s, socklen_t *len_ret)
         return 1;
     }
 #endif /* HAVE_SOCKADDR_ALG */
-#ifdef HAVE_AF_HYPERV
-    case AF_HYPERV:
-    {
-        *len_ret = sizeof (SOCKADDR_HV);
-        return 1;
-    }
-#endif /* HAVE_AF_HYPERV */
 
     /* More cases here... */
 
@@ -2930,8 +2817,8 @@ sock_setblocking(PySocketSockObject *s, PyObject *arg)
 {
     long block;
 
-    block = PyObject_IsTrue(arg);
-    if (block < 0)
+    block = PyLong_AsLong(arg);
+    if (block == -1 && PyErr_Occurred())
         return NULL;
 
     s->sock_timeout = _PyTime_FromSeconds(block ? -1 : 0);
@@ -4112,7 +3999,8 @@ makeval_recvmsg(ssize_t received, void *data)
 
     if (received < PyBytes_GET_SIZE(*buf))
         _PyBytes_Resize(buf, received);
-    return Py_XNewRef(*buf);
+    Py_XINCREF(*buf);
+    return *buf;
 }
 
 /* s.recvmsg(bufsize[, ancbufsize[, flags]]) method */
@@ -4391,7 +4279,8 @@ sock_sendall(PySocketSockObject *s, PyObject *args)
     } while (len > 0);
     PyBuffer_Release(&pbuf);
 
-    res = Py_NewRef(Py_None);
+    Py_INCREF(Py_None);
+    res = Py_None;
 
 done:
     PyBuffer_Release(&pbuf);
@@ -5175,9 +5064,10 @@ static void
 sock_finalize(PySocketSockObject *s)
 {
     SOCKET_T fd;
+    PyObject *error_type, *error_value, *error_traceback;
 
     /* Save the current exception, if any. */
-    PyObject *exc = PyErr_GetRaisedException();
+    PyErr_Fetch(&error_type, &error_value, &error_traceback);
 
     if (s->sock_fd != INVALID_SOCKET) {
         if (PyErr_ResourceWarning((PyObject *)s, 1, "unclosed %R", s)) {
@@ -5201,7 +5091,7 @@ sock_finalize(PySocketSockObject *s)
     }
 
     /* Restore the saved exception. */
-    PyErr_SetRaisedException(exc);
+    PyErr_Restore(error_type, error_value, error_traceback);
 }
 
 static void
@@ -6649,7 +6539,7 @@ socket_getaddrinfo(PyObject *self, PyObject *args, PyObject* kwargs)
     struct addrinfo *res0 = NULL;
     PyObject *hobj = NULL;
     PyObject *pobj = (PyObject *)NULL;
-    PyObject *pstr = NULL;
+    char pbuf[30];
     const char *hptr, *pptr;
     int family, socktype, protocol, flags;
     int error;
@@ -6679,13 +6569,11 @@ socket_getaddrinfo(PyObject *self, PyObject *args, PyObject* kwargs)
         return NULL;
     }
     if (PyLong_CheckExact(pobj)) {
-        pstr = PyObject_Str(pobj);
-        if (pstr == NULL)
+        long value = PyLong_AsLong(pobj);
+        if (value == -1 && PyErr_Occurred())
             goto err;
-        assert(PyUnicode_Check(pstr));
-        pptr = PyUnicode_AsUTF8(pstr);
-        if (pptr == NULL)
-            goto err;
+        PyOS_snprintf(pbuf, sizeof(pbuf), "%ld", value);
+        pptr = pbuf;
     } else if (PyUnicode_Check(pobj)) {
         pptr = PyUnicode_AsUTF8(pobj);
         if (pptr == NULL)
@@ -6751,14 +6639,12 @@ socket_getaddrinfo(PyObject *self, PyObject *args, PyObject* kwargs)
         Py_DECREF(single);
     }
     Py_XDECREF(idna);
-    Py_XDECREF(pstr);
     if (res0)
         freeaddrinfo(res0);
     return all;
  err:
     Py_XDECREF(all);
     Py_XDECREF(idna);
-    Py_XDECREF(pstr);
     if (res0)
         freeaddrinfo(res0);
     return (PyObject *)NULL;
@@ -7351,22 +7237,29 @@ PyInit__socket(void)
     if (m == NULL)
         return NULL;
 
-    PyModule_AddObject(m, "error", Py_NewRef(PyExc_OSError));
+    Py_INCREF(PyExc_OSError);
+    PyModule_AddObject(m, "error", PyExc_OSError);
     socket_herror = PyErr_NewException("socket.herror",
                                        PyExc_OSError, NULL);
     if (socket_herror == NULL)
         return NULL;
-    PyModule_AddObject(m, "herror", Py_NewRef(socket_herror));
+    Py_INCREF(socket_herror);
+    PyModule_AddObject(m, "herror", socket_herror);
     socket_gaierror = PyErr_NewException("socket.gaierror", PyExc_OSError,
         NULL);
     if (socket_gaierror == NULL)
         return NULL;
-    PyModule_AddObject(m, "gaierror", Py_NewRef(socket_gaierror));
+    Py_INCREF(socket_gaierror);
+    PyModule_AddObject(m, "gaierror", socket_gaierror);
     PyModule_AddObjectRef(m, "timeout", PyExc_TimeoutError);
 
-    if (PyModule_AddObject(m, "SocketType", Py_NewRef(&sock_type)) != 0)
+    Py_INCREF((PyObject *)&sock_type);
+    if (PyModule_AddObject(m, "SocketType",
+                           (PyObject *)&sock_type) != 0)
         return NULL;
-    if (PyModule_AddObject(m, "socket", Py_NewRef(&sock_type)) != 0)
+    Py_INCREF((PyObject *)&sock_type);
+    if (PyModule_AddObject(m, "socket",
+                           (PyObject *)&sock_type) != 0)
         return NULL;
 
 #ifdef ENABLE_IPV6
@@ -7374,7 +7267,8 @@ PyInit__socket(void)
 #else
     has_ipv6 = Py_False;
 #endif
-    PyModule_AddObject(m, "has_ipv6", Py_NewRef(has_ipv6));
+    Py_INCREF(has_ipv6);
+    PyModule_AddObject(m, "has_ipv6", has_ipv6);
 
     /* Export C API */
     PySocketModule_APIObject *capi = sock_get_api();
@@ -7556,27 +7450,6 @@ PyInit__socket(void)
     /* Linux LLC */
     PyModule_AddIntMacro(m, AF_LLC);
 #endif
-#ifdef HAVE_AF_HYPERV
-    /* Hyper-V sockets */
-    PyModule_AddIntMacro(m, AF_HYPERV);
-
-    /* for proto */
-    PyModule_AddIntMacro(m, HV_PROTOCOL_RAW);
-
-    /* for setsockopt() */
-    PyModule_AddIntMacro(m, HVSOCKET_CONNECT_TIMEOUT);
-    PyModule_AddIntMacro(m, HVSOCKET_CONNECT_TIMEOUT_MAX);
-    PyModule_AddIntMacro(m, HVSOCKET_CONNECTED_SUSPEND);
-    PyModule_AddIntMacro(m, HVSOCKET_ADDRESS_FLAG_PASSTHRU);
-
-    /* for bind() or connect() */
-    PyModule_AddStringConstant(m, "HV_GUID_ZERO", "00000000-0000-0000-0000-000000000000");
-    PyModule_AddStringConstant(m, "HV_GUID_WILDCARD", "00000000-0000-0000-0000-000000000000");
-    PyModule_AddStringConstant(m, "HV_GUID_BROADCAST", "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF");
-    PyModule_AddStringConstant(m, "HV_GUID_CHILDREN", "90DB8B89-0D35-4F79-8CE9-49EA0AC8B7CD");
-    PyModule_AddStringConstant(m, "HV_GUID_LOOPBACK", "E0E16197-DD56-4A10-9195-5EE7A155A838");
-    PyModule_AddStringConstant(m, "HV_GUID_PARENT", "A42E7CDA-D03F-480C-9CC2-A4DE20ABB878");
-#endif /* HAVE_AF_HYPERV */
 
 #ifdef USE_BLUETOOTH
     PyModule_AddIntMacro(m, AF_BLUETOOTH);
@@ -7712,25 +7585,6 @@ PyInit__socket(void)
     PyModule_AddIntMacro(m, ALG_OP_VERIFY);
 #endif
 
-/* IEEE 802.3 protocol numbers required for a standard TCP/IP network stack */
-#ifdef ETHERTYPE_ARP
-    PyModule_AddIntMacro(m, ETHERTYPE_ARP);
-#endif
-#ifdef ETHERTYPE_IP
-    PyModule_AddIntMacro(m, ETHERTYPE_IP);
-#endif
-#ifdef ETHERTYPE_IPV6
-    PyModule_AddIntMacro(m, ETHERTYPE_IPV6);
-#endif
-#ifdef ETHERTYPE_VLAN
-    PyModule_AddIntMacro(m, ETHERTYPE_VLAN);
-#endif
-
-/* Linux pseudo-protocol for sniffing every packet */
-#ifdef ETH_P_ALL
-    PyModule_AddIntMacro(m, ETH_P_ALL);
-#endif
-
     /* Socket types */
     PyModule_AddIntMacro(m, SOCK_STREAM);
     PyModule_AddIntMacro(m, SOCK_DGRAM);
@@ -7841,12 +7695,6 @@ PyInit__socket(void)
 #endif
 #ifdef  SO_MARK
     PyModule_AddIntMacro(m, SO_MARK);
-#endif
-#ifdef  SO_USER_COOKIE
-    PyModule_AddIntMacro(m, SO_USER_COOKIE);
-#endif
-#ifdef  SO_RTABLE
-    PyModule_AddIntMacro(m, SO_RTABLE);
 #endif
 #ifdef SO_DOMAIN
     PyModule_AddIntMacro(m, SO_DOMAIN);
@@ -8358,9 +8206,6 @@ PyInit__socket(void)
 #ifdef  IP_TRANSPARENT
     PyModule_AddIntMacro(m, IP_TRANSPARENT);
 #endif
-#ifdef  IP_PKTINFO
-    PyModule_AddIntMacro(m, IP_PKTINFO);
-#endif
 #ifdef IP_BIND_ADDRESS_NO_PORT
     PyModule_AddIntMacro(m, IP_BIND_ADDRESS_NO_PORT);
 #endif
@@ -8494,77 +8339,17 @@ PyInit__socket(void)
 #ifdef  TCP_QUICKACK
     PyModule_AddIntMacro(m, TCP_QUICKACK);
 #endif
+#ifdef  TCP_FASTOPEN
+    PyModule_AddIntMacro(m, TCP_FASTOPEN);
+#endif
 #ifdef  TCP_CONGESTION
     PyModule_AddIntMacro(m, TCP_CONGESTION);
-#endif
-#ifdef  TCP_MD5SIG
-    PyModule_AddIntMacro(m, TCP_MD5SIG);
-#endif
-#ifdef  TCP_THIN_LINEAR_TIMEOUTS
-    PyModule_AddIntMacro(m, TCP_THIN_LINEAR_TIMEOUTS);
-#endif
-#ifdef  TCP_THIN_DUPACK
-    PyModule_AddIntMacro(m, TCP_THIN_DUPACK);
 #endif
 #ifdef  TCP_USER_TIMEOUT
     PyModule_AddIntMacro(m, TCP_USER_TIMEOUT);
 #endif
-#ifdef  TCP_REPAIR
-    PyModule_AddIntMacro(m, TCP_REPAIR);
-#endif
-#ifdef  TCP_REPAIR_QUEUE
-    PyModule_AddIntMacro(m, TCP_REPAIR_QUEUE);
-#endif
-#ifdef  TCP_QUEUE_SEQ
-    PyModule_AddIntMacro(m, TCP_QUEUE_SEQ);
-#endif
-#ifdef  TCP_REPAIR_OPTIONS
-    PyModule_AddIntMacro(m, TCP_REPAIR_OPTIONS);
-#endif
-#ifdef  TCP_FASTOPEN
-    PyModule_AddIntMacro(m, TCP_FASTOPEN);
-#endif
-#ifdef  TCP_TIMESTAMP
-    PyModule_AddIntMacro(m, TCP_TIMESTAMP);
-#endif
 #ifdef  TCP_NOTSENT_LOWAT
     PyModule_AddIntMacro(m, TCP_NOTSENT_LOWAT);
-#endif
-#ifdef  TCP_CC_INFO
-    PyModule_AddIntMacro(m, TCP_CC_INFO);
-#endif
-#ifdef  TCP_SAVE_SYN
-    PyModule_AddIntMacro(m, TCP_SAVE_SYN);
-#endif
-#ifdef  TCP_SAVED_SYN
-    PyModule_AddIntMacro(m, TCP_SAVED_SYN);
-#endif
-#ifdef  TCP_REPAIR_WINDOW
-    PyModule_AddIntMacro(m, TCP_REPAIR_WINDOW);
-#endif
-#ifdef  TCP_FASTOPEN_CONNECT
-    PyModule_AddIntMacro(m, TCP_FASTOPEN_CONNECT);
-#endif
-#ifdef  TCP_ULP
-    PyModule_AddIntMacro(m, TCP_ULP);
-#endif
-#ifdef  TCP_MD5SIG_EXT
-    PyModule_AddIntMacro(m, TCP_MD5SIG_EXT);
-#endif
-#ifdef  TCP_FASTOPEN_KEY
-    PyModule_AddIntMacro(m, TCP_FASTOPEN_KEY);
-#endif
-#ifdef  TCP_FASTOPEN_NO_COOKIE
-    PyModule_AddIntMacro(m, TCP_FASTOPEN_NO_COOKIE);
-#endif
-#ifdef  TCP_ZEROCOPY_RECEIVE
-    PyModule_AddIntMacro(m, TCP_ZEROCOPY_RECEIVE);
-#endif
-#ifdef  TCP_INQ
-    PyModule_AddIntMacro(m, TCP_INQ);
-#endif
-#ifdef  TCP_TX_DELAY
-    PyModule_AddIntMacro(m, TCP_TX_DELAY);
 #endif
 
     /* IPX options */

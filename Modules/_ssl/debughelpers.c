@@ -87,7 +87,8 @@ _PySSL_msg_callback(int write_p, int version, int content_type,
 static PyObject *
 _PySSLContext_get_msg_callback(PySSLContext *self, void *c) {
     if (self->msg_cb != NULL) {
-        return Py_NewRef(self->msg_cb);
+        Py_INCREF(self->msg_cb);
+        return self->msg_cb;
     } else {
         Py_RETURN_NONE;
     }
@@ -106,7 +107,8 @@ _PySSLContext_set_msg_callback(PySSLContext *self, PyObject *arg, void *c) {
                             "not a callable object");
             return -1;
         }
-        self->msg_cb = Py_NewRef(arg);
+        Py_INCREF(arg);
+        self->msg_cb = arg;
         SSL_CTX_set_msg_callback(self->ctx, _PySSL_msg_callback);
     }
     return 0;
@@ -164,7 +166,8 @@ _PySSL_keylog_callback(const SSL *ssl, const char *line)
 static PyObject *
 _PySSLContext_get_keylog_filename(PySSLContext *self, void *c) {
     if (self->keylog_filename != NULL) {
-        return Py_NewRef(self->keylog_filename);
+        Py_INCREF(self->keylog_filename);
+        return self->keylog_filename;
     } else {
         Py_RETURN_NONE;
     }
@@ -200,7 +203,8 @@ _PySSLContext_set_keylog_filename(PySSLContext *self, PyObject *arg, void *c) {
                         "Can't malloc memory for keylog file");
         return -1;
     }
-    self->keylog_filename = Py_NewRef(arg);
+    Py_INCREF(arg);
+    self->keylog_filename = arg;
 
     /* Write a header for seekable, empty files (this excludes pipes). */
     PySSL_BEGIN_ALLOW_THREADS

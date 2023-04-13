@@ -2057,7 +2057,6 @@ to handle the :meth:`~Decimal.quantize` step:
 
     >>> def mul(x, y, fp=TWOPLACES):
     ...     return (x * y).quantize(fp)
-    ...
     >>> def div(x, y, fp=TWOPLACES):
     ...     return (x / y).quantize(fp)
 

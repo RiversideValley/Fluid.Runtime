@@ -72,7 +72,6 @@
 
 #include "Python.h"
 #include "pycore_moduleobject.h"  // _PyModule_GetState()
-#include "pycore_runtime.h"
 #ifdef HAVE_PROCESS_H
 #  include <process.h>            // getpid()
 #endif
@@ -259,9 +258,7 @@ random_seed_time_pid(RandomObject *self)
     key[0] = (uint32_t)(now & 0xffffffffU);
     key[1] = (uint32_t)(now >> 32);
 
-#ifdef MS_WINDOWS_NON_DESKTOP
-    key[2] = (uint32_t)GetCurrentProcessId();
-#elif defined(HAVE_GETPID)
+#ifdef HAVE_GETPID
     key[2] = (uint32_t)getpid();
 #else
     key[2] = 0;

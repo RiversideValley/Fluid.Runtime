@@ -74,7 +74,8 @@ ste_new(struct symtable *st, identifier name, _Py_block_ty block,
     ste->ste_table = st;
     ste->ste_id = k; /* ste owns reference to k */
 
-    ste->ste_name = Py_NewRef(name);
+    Py_INCREF(name);
+    ste->ste_name = name;
 
     ste->ste_symbols = NULL;
     ste->ste_varnames = NULL;
@@ -277,6 +278,7 @@ _PySymtable_Build(mod_ty mod, PyObject *filename, PyFutureFeatures *future)
     asdl_stmt_seq *seq;
     int i;
     PyThreadState *tstate;
+    int recursion_limit = Py_GetRecursionLimit();
     int starting_recursion_depth;
 
     if (st == NULL)
@@ -285,7 +287,8 @@ _PySymtable_Build(mod_ty mod, PyObject *filename, PyFutureFeatures *future)
         _PySymtable_Free(st);
         return NULL;
     }
-    st->st_filename = Py_NewRef(filename);
+    Py_INCREF(filename);
+    st->st_filename = filename;
     st->st_future = future;
 
     /* Setup recursion depth check counters */
@@ -295,10 +298,12 @@ _PySymtable_Build(mod_ty mod, PyObject *filename, PyFutureFeatures *future)
         return NULL;
     }
     /* Be careful here to prevent overflow. */
-    int recursion_depth = C_RECURSION_LIMIT - tstate->c_recursion_remaining;
-    starting_recursion_depth = recursion_depth * COMPILER_STACK_FRAME_SCALE;
+    int recursion_depth = tstate->recursion_limit - tstate->recursion_remaining;
+    starting_recursion_depth = (recursion_depth < INT_MAX / COMPILER_STACK_FRAME_SCALE) ?
+        recursion_depth * COMPILER_STACK_FRAME_SCALE : recursion_depth;
     st->recursion_depth = starting_recursion_depth;
-    st->recursion_limit = C_RECURSION_LIMIT * COMPILER_STACK_FRAME_SCALE;
+    st->recursion_limit = (recursion_limit < INT_MAX / COMPILER_STACK_FRAME_SCALE) ?
+        recursion_limit * COMPILER_STACK_FRAME_SCALE : recursion_limit;
 
     /* Make the initial symbol information gathering pass */
     if (!symtable_enter_block(st, &_Py_ID(top), ModuleBlock, (void *)mod, 0, 0, 0, 0)) {
@@ -373,17 +378,17 @@ PySymtable_Lookup(struct symtable *st, void *key)
     if (k == NULL)
         return NULL;
     v = PyDict_GetItemWithError(st->st_blocks, k);
-    Py_DECREF(k);
-
     if (v) {
         assert(PySTEntry_Check(v));
+        Py_INCREF(v);
     }
     else if (!PyErr_Occurred()) {
         PyErr_SetString(PyExc_KeyError,
                         "unknown symbol table entry");
     }
 
-    return (PySTEntryObject *)Py_XNewRef(v);
+    Py_DECREF(k);
+    return (PySTEntryObject *)v;
 }
 
 long
@@ -1488,8 +1493,7 @@ symtable_extend_namedexpr_scope(struct symtable *st, expr_ty e)
          */
         if (ste->ste_comprehension) {
             long target_in_scope = _PyST_GetSymbol(ste, target_name);
-            if ((target_in_scope & DEF_COMP_ITER) &&
-                (target_in_scope & DEF_LOCAL)) {
+            if (target_in_scope & DEF_COMP_ITER) {
                 PyErr_Format(PyExc_SyntaxError, NAMED_EXPR_COMP_CONFLICT, target_name);
                 PyErr_RangedSyntaxLocationObject(st->st_filename,
                                                   e->lineno,
@@ -1540,7 +1544,7 @@ symtable_extend_namedexpr_scope(struct symtable *st, expr_ty e)
     /* We should always find either a FunctionBlock, ModuleBlock or ClassBlock
        and should never fall to this case
     */
-    Py_UNREACHABLE();
+    assert(0);
     return 0;
 }
 
@@ -1948,7 +1952,8 @@ symtable_visit_alias(struct symtable *st, alias_ty a)
             return 0;
     }
     else {
-        store_name = Py_NewRef(name);
+        store_name = name;
+        Py_INCREF(store_name);
     }
     if (!_PyUnicode_EqualToASCIIString(name, "*")) {
         int r = symtable_add_def(st, store_name, DEF_IMPORT, LOCATION(a));
@@ -2142,13 +2147,14 @@ _Py_SymtableStringObjectFlags(const char *str, PyObject *filename,
         _PyArena_Free(arena);
         return NULL;
     }
-    PyFutureFeatures future;
-    if (!_PyFuture_FromAST(mod, filename, &future)) {
+    PyFutureFeatures *future = _PyFuture_FromAST(mod, filename);
+    if (future == NULL) {
         _PyArena_Free(arena);
         return NULL;
     }
-    future.ff_features |= flags->cf_flags;
-    st = _PySymtable_Build(mod, filename, &future);
+    future->ff_features |= flags->cf_flags;
+    st = _PySymtable_Build(mod, filename, future);
+    PyObject_Free((void *)future);
     _PyArena_Free(arena);
     return st;
 }

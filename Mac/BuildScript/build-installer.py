@@ -203,7 +203,7 @@ def internalTk():
 
 # Do we use 8.6.8 when building our own copy
 # of Tcl/Tk or a modern version.
-#   We use the old version when building on
+#   We use the old version when buildin on
 #   old versions of macOS due to build issues.
 def useOldTk():
     return getBuildTuple() < (10, 15)
@@ -271,11 +271,10 @@ def library_recipes():
             tk_patches = [ ]
 
 
-        base_url = "https://prdownloads.sourceforge.net/tcl/{what}{version}-src.tar.gz"
         result.extend([
           dict(
               name="Tcl %s"%(tcl_tk_ver,),
-              url=base_url.format(what="tcl", version=tcl_tk_ver),
+              url="ftp://ftp.tcl.tk/pub/tcl//tcl8_6/tcl%s-src.tar.gz"%(tcl_tk_ver,),
               checksum=tcl_checksum,
               buildDir="unix",
               configure_pre=[
@@ -292,7 +291,7 @@ def library_recipes():
               ),
           dict(
               name="Tk %s"%(tcl_tk_ver,),
-              url=base_url.format(what="tk", version=tcl_tk_ver),
+              url="ftp://ftp.tcl.tk/pub/tcl//tcl8_6/tk%s-src.tar.gz"%(tcl_tk_ver,),
               checksum=tk_checksum,
               patches=tk_patches,
               buildDir="unix",
@@ -361,7 +360,7 @@ def library_recipes():
           dict(
               name="SQLite 3.40.1",
               url="https://sqlite.org/2022/sqlite-autoconf-3400100.tar.gz",
-              checksum="5498af3a357753d473ee713e363fa5b7",
+              checksum="42175b1a1d23529cb133bbd2b5900afd",
               extra_cflags=('-Os '
                             '-DSQLITE_ENABLE_FTS5 '
                             '-DSQLITE_ENABLE_FTS4 '
@@ -1358,7 +1357,7 @@ def buildPython():
         build_time_vars = l_dict['build_time_vars']
     vars = {}
     for k, v in build_time_vars.items():
-        if isinstance(v, str):
+        if type(v) == type(''):
             for p in (include_path, lib_path):
                 v = v.replace(' ' + p, '')
                 v = v.replace(p + ' ', '')

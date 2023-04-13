@@ -1604,7 +1604,6 @@ decorator:
     >>> @patch.dict(foo, {'newkey': 'newvalue'})
     ... def test():
     ...     assert foo == {'newkey': 'newvalue'}
-    ...
     >>> test()
     >>> assert foo == {}
 

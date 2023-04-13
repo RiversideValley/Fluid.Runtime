@@ -72,7 +72,7 @@ including `cursors`_ and `transactions`_.
 
 First, we need to create a new database and open
 a database connection to allow :mod:`!sqlite3` to work with it.
-Call :func:`sqlite3.connect` to to create a connection to
+Call :func:`sqlite3.connect` to create a connection to
 the database :file:`tutorial.db` in the current working directory,
 implicitly creating it if it does not exist:
 
@@ -259,8 +259,7 @@ Module functions
 .. function:: connect(database, timeout=5.0, detect_types=0, \
                       isolation_level="DEFERRED", check_same_thread=True, \
                       factory=sqlite3.Connection, cached_statements=128, \
-                      uri=False, \*, \
-                      autocommit=sqlite3.LEGACY_TRANSACTION_CONTROL)
+                      uri=False)
 
    Open a connection to an SQLite database.
 
@@ -272,9 +271,9 @@ Module functions
 
    :param float timeout:
        How many seconds the connection should wait before raising
-       an exception, if the database is locked by another connection.
-       If another connection opens a transaction to modify the database,
-       it will be locked until that transaction is committed.
+       an :exc:`OperationalError` when a table is locked.
+       If another connection opens a transaction to modify a table,
+       that table will be locked until the transaction is committed.
        Default five seconds.
 
    :param int detect_types:
@@ -292,13 +291,11 @@ Module functions
        By default (``0``), type detection is disabled.
 
    :param isolation_level:
-       Control legacy transaction handling behaviour.
-       See :attr:`Connection.isolation_level` and
-       :ref:`sqlite3-transaction-control-isolation-level` for more information.
+       The :attr:`~Connection.isolation_level` of the connection,
+       controlling whether and how transactions are implicitly opened.
        Can be ``"DEFERRED"`` (default), ``"EXCLUSIVE"`` or ``"IMMEDIATE"``;
        or ``None`` to disable opening transactions implicitly.
-       Has no effect unless :attr:`Connection.autocommit` is set to
-       :data:`~sqlite3.LEGACY_TRANSACTION_CONTROL` (the default).
+       See :ref:`sqlite3-controlling-transactions` for more.
    :type isolation_level: str | None
 
    :param bool check_same_thread:
@@ -328,15 +325,6 @@ Module functions
        The query string allows passing parameters to SQLite,
        enabling various :ref:`sqlite3-uri-tricks`.
 
-   :param autocommit:
-       Control :pep:`249` transaction handling behaviour.
-       See :attr:`Connection.autocommit` and
-       :ref:`sqlite3-transaction-control-autocommit` for more information.
-       *autocommit* currently defaults to
-       :data:`~sqlite3.LEGACY_TRANSACTION_CONTROL`.
-       The default will change to ``False`` in a future Python release.
-   :type autocommit: bool
-
    :rtype: Connection
 
    .. audit-event:: sqlite3.connect database sqlite3.connect
@@ -350,9 +338,6 @@ Module functions
 
    .. versionadded:: 3.10
       The ``sqlite3.connect/handle`` auditing event.
-
-   .. versionadded:: 3.12
-      The *autocommit* parameter.
 
 .. function:: complete_statement(statement)
 
@@ -374,9 +359,6 @@ Module functions
    This function may be useful during command-line input
    to determine if the entered text seems to form a complete SQL statement,
    or if additional input is needed before calling :meth:`~Cursor.execute`.
-
-   See :func:`!runsource` in :source:`Lib/sqlite3/__main__.py`
-   for real-world use.
 
 .. function:: enable_callback_tracebacks(flag, /)
 
@@ -400,7 +382,6 @@ Module functions
       >>> con = sqlite3.connect(":memory:")
       >>> def evil_trace(stmt):
       ...     5/0
-      ...
       >>> con.set_trace_callback(evil_trace)
       >>> def debug(unraisable):
       ...     print(f"{unraisable.exc_value!r} in callback {unraisable.object.__name__}")
@@ -437,12 +418,6 @@ Module functions
 
 Module constants
 ^^^^^^^^^^^^^^^^
-
-.. data:: LEGACY_TRANSACTION_CONTROL
-
-   Set :attr:`~Connection.autocommit` to this constant to select
-   old style (pre-Python 3.12) transaction control behaviour.
-   See :ref:`sqlite3-transaction-control-isolation-level` for more information.
 
 .. data:: PARSE_COLNAMES
 
@@ -558,20 +533,10 @@ Module constants
    Version number of this module as a :class:`string <str>`.
    This is not the version of the SQLite library.
 
-   .. deprecated-removed:: 3.12 3.14
-      This constant used to reflect the version number of the ``pysqlite``
-      package, a third-party library which used to upstream changes to
-      :mod:`!sqlite3`. Today, it carries no meaning or practical value.
-
 .. data:: version_info
 
    Version number of this module as a :class:`tuple` of :class:`integers <int>`.
    This is not the version of the SQLite library.
-
-   .. deprecated-removed:: 3.12 3.14
-      This constant used to reflect the version number of the ``pysqlite``
-      package, a third-party library which used to upstream changes to
-      :mod:`!sqlite3`. Today, it carries no meaning or practical value.
 
 
 .. _sqlite3-connection-objects:
@@ -638,27 +603,18 @@ Connection objects
    .. method:: commit()
 
       Commit any pending transaction to the database.
-      If :attr:`autocommit` is ``True``, or there is no open transaction,
-      this method does nothing.
-      If :attr:`!autocommit` is ``False``, a new transaction is implicitly
-      opened if a pending transaction was committed by this method.
+      If there is no open transaction, this method is a no-op.
 
    .. method:: rollback()
 
       Roll back to the start of any pending transaction.
-      If :attr:`autocommit` is ``True``, or there is no open transaction,
-      this method does nothing.
-      If :attr:`!autocommit` is ``False``, a new transaction is implicitly
-      opened if a pending transaction was rolled back by this method.
+      If there is no open transaction, this method is a no-op.
 
    .. method:: close()
 
       Close the database connection.
-      If :attr:`autocommit` is ``False``,
-      any pending transaction is implicitly rolled back.
-      If :attr:`!autocommit` is ``True`` or :data:`LEGACY_TRANSACTION_CONTROL`,
-      no implicit transaction control is executed.
-      Make sure to :meth:`commit` before closing
+      Any pending transaction is not committed implicitly;
+      make sure to :meth:`commit` before closing
       to avoid losing pending changes.
 
    .. method:: execute(sql, parameters=(), /)
@@ -911,7 +867,7 @@ Connection objects
 
       Call this method from a different thread to abort any queries that might
       be executing on the connection.
-      Aborted queries will raise an exception.
+      Aborted queries will raise an :exc:`OperationalError`.
 
 
    .. method:: set_authorizer(authorizer_callback)
@@ -950,7 +906,7 @@ Connection objects
       method with ``None`` for *progress_handler*.
 
       Returning a non-zero value from the handler function will terminate the
-      currently executing query and cause it to raise a :exc:`DatabaseError`
+      currently executing query and cause it to raise an :exc:`OperationalError`
       exception.
 
 
@@ -1255,38 +1211,6 @@ Connection objects
 
       .. versionadded:: 3.11
 
-   .. attribute:: autocommit
-
-      This attribute controls :pep:`249`-compliant transaction behaviour.
-      :attr:`!autocommit` has three allowed values:
-
-      * ``False``: Select :pep:`249`-compliant transaction behaviour,
-        implying that :mod:`!sqlite3` ensures a transaction is always open.
-        Use :meth:`commit` and :meth:`rollback` to close transactions.
-
-        This is the recommended value of :attr:`!autocommit`.
-
-      * ``True``: Use SQLite's `autocommit mode`_.
-        :meth:`commit` and :meth:`rollback` have no effect in this mode.
-
-      * :data:`LEGACY_TRANSACTION_CONTROL`:
-        Pre-Python 3.12 (non-:pep:`249`-compliant) transaction control.
-        See :attr:`isolation_level` for more details.
-
-        This is currently the default value of :attr:`!autocommit`.
-
-      Changing :attr:`!autocommit` to ``False`` will open a new transaction,
-      and changing it to ``True`` will commit any pending transaction.
-
-      See :ref:`sqlite3-transaction-control-autocommit` for more details.
-
-      .. note::
-
-         The :attr:`isolation_level` attribute has no effect unless
-         :attr:`autocommit` is :data:`LEGACY_TRANSACTION_CONTROL`.
-
-      .. versionadded:: 3.12
-
    .. attribute:: in_transaction
 
       This read-only attribute corresponds to the low-level SQLite
@@ -1299,23 +1223,16 @@ Connection objects
 
    .. attribute:: isolation_level
 
-      Controls the :ref:`legacy transaction handling mode
-      <sqlite3-transaction-control-isolation-level>` of :mod:`!sqlite3`.
+      This attribute controls the :ref:`transaction handling
+      <sqlite3-controlling-transactions>` performed by :mod:`!sqlite3`.
       If set to ``None``, transactions are never implicitly opened.
       If set to one of ``"DEFERRED"``, ``"IMMEDIATE"``, or ``"EXCLUSIVE"``,
       corresponding to the underlying `SQLite transaction behaviour`_,
-      :ref:`implicit transaction management
-      <sqlite3-transaction-control-isolation-level>` is performed.
+      implicit :ref:`transaction management
+      <sqlite3-controlling-transactions>` is performed.
 
       If not overridden by the *isolation_level* parameter of :func:`connect`,
       the default is ``""``, which is an alias for ``"DEFERRED"``.
-
-      .. note::
-
-         Using :attr:`autocommit` to control transaction handling is
-         recommended over using :attr:`!isolation_level`.
-         :attr:`!isolation_level` has no effect unless :attr:`autocommit` is
-         set to :data:`LEGACY_TRANSACTION_CONTROL` (the default).
 
    .. attribute:: row_factory
 
@@ -1435,20 +1352,10 @@ Cursor objects
       :raises ProgrammingError:
          If *sql* contains more than one SQL statement.
 
-      If :attr:`~Connection.autocommit` is
-      :data:`LEGACY_TRANSACTION_CONTROL`,
-      :attr:`~Connection.isolation_level` is not ``None``,
+      If :attr:`~Connection.isolation_level` is not ``None``,
       *sql* is an ``INSERT``, ``UPDATE``, ``DELETE``, or ``REPLACE`` statement,
       and there is no open transaction,
       a transaction is implicitly opened before executing *sql*.
-
-      .. deprecated-removed:: 3.12 3.14
-
-         :exc:`DeprecationWarning` is emitted if
-         :ref:`named placeholders <sqlite3-placeholders>` are used
-         and *parameters* is a sequence instead of a :class:`dict`.
-         Starting with Python 3.14, :exc:`ProgrammingError` will
-         be raised instead.
 
       Use :meth:`executescript` to execute multiple SQL statements.
 
@@ -1484,21 +1391,10 @@ Cursor objects
          # cur is an sqlite3.Cursor object
          cur.executemany("INSERT INTO data VALUES(?)", rows)
 
-      .. deprecated-removed:: 3.12 3.14
-
-         :exc:`DeprecationWarning` is emitted if
-         :ref:`named placeholders <sqlite3-placeholders>` are used
-         and the items in *parameters* are sequences
-         instead of :class:`dict`\s.
-         Starting with Python 3.14, :exc:`ProgrammingError` will
-         be raised instead.
-
    .. method:: executescript(sql_script, /)
 
       Execute the SQL statements in *sql_script*.
-      If the :attr:`~Connection.autocommit` is
-      :data:`LEGACY_TRANSACTION_CONTROL`
-      and there is a pending transaction,
+      If there is a pending transaction,
       an implicit ``COMMIT`` statement is executed first.
       No other implicit transaction control is performed;
       any transaction control must be added to *sql_script*.
@@ -1895,26 +1791,27 @@ Python types via :ref:`converters <sqlite3-converters>`.
 
 .. _sqlite3-default-converters:
 
-Default adapters and converters (deprecated)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Default adapters and converters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. note::
+There are default adapters for the date and datetime types in the datetime
+module. They will be sent as ISO dates/ISO timestamps to SQLite.
 
-   The default adapters and converters are deprecated as of Python 3.12.
-   Instead, use the :ref:`sqlite3-adapter-converter-recipes`
-   and tailor them to your needs.
+The default converters are registered under the name "date" for
+:class:`datetime.date` and under the name "timestamp" for
+:class:`datetime.datetime`.
 
-The deprecated default adapters and converters consist of:
+This way, you can use date/timestamps from Python without any additional
+fiddling in most cases. The format of the adapters is also compatible with the
+experimental SQLite date/time functions.
 
-* An adapter for :class:`datetime.date` objects to :class:`strings <str>` in
-  `ISO 8601`_ format.
-* An adapter for :class:`datetime.datetime` objects to strings in
-  ISO 8601 format.
-* A converter for :ref:`declared <sqlite3-converters>` "date" types to
-  :class:`datetime.date` objects.
-* A converter for declared "timestamp" types to
-  :class:`datetime.datetime` objects.
-  Fractional parts will be truncated to 6 digits (microsecond precision).
+The following example demonstrates this.
+
+.. literalinclude:: ../includes/sqlite3/pysqlite_datetime.py
+
+If a timestamp stored in SQLite has a fractional part longer than 6
+numbers, its value will be truncated to microsecond precision by the
+timestamp converter.
 
 .. note::
 
@@ -1922,37 +1819,6 @@ The deprecated default adapters and converters consist of:
    always returns a naive :class:`datetime.datetime` object. To preserve UTC
    offsets in timestamps, either leave converters disabled, or register an
    offset-aware converter with :func:`register_converter`.
-
-.. deprecated:: 3.12
-
-.. _ISO 8601: https://en.wikipedia.org/wiki/ISO_8601
-
-
-.. _sqlite3-cli:
-
-Command-line interface
-^^^^^^^^^^^^^^^^^^^^^^
-
-The :mod:`!sqlite3` module can be invoked as a script,
-using the interpreter's :option:`-m` switch,
-in order to provide a simple SQLite shell.
-The argument signature is as follows::
-
-   python -m sqlite3 [-h] [-v] [filename] [sql]
-
-Type ``.quit`` or CTRL-D to exit the shell.
-
-.. program:: python -m sqlite3 [-h] [-v] [filename] [sql]
-
-.. option:: -h, --help
-
-   Print CLI help.
-
-.. option:: -v, --version
-
-   Print underlying SQLite library version.
-
-.. versionadded:: 3.12
 
 
 .. _sqlite3-howtos:
@@ -1988,7 +1854,7 @@ question marks (qmark style) or named placeholders (named style).
 For the qmark style, *parameters* must be a
 :term:`sequence` whose length must match the number of placeholders,
 or a :exc:`ProgrammingError` is raised.
-For the named style, *parameters* must be
+For the named style, *parameters* should be
 an instance of a :class:`dict` (or a subclass),
 which must contain keys for all named parameters;
 any extra items are ignored.
@@ -2248,7 +2114,7 @@ This section shows recipes for common adapters and converters.
    assert convert_datetime(b"2019-05-18T15:17:08.123456") == dt
 
    # Using current time as fromtimestamp() returns local date/time.
-   # Dropping microseconds as adapt_datetime_epoch truncates fractional second part.
+   # Droping microseconds as adapt_datetime_epoch truncates fractional second part.
    now = datetime.datetime.now().replace(microsecond=0)
    current_timestamp = int(now.timestamp())
 
@@ -2312,12 +2178,9 @@ the transaction is committed.
 If this commit fails,
 or if the body of the ``with`` statement raises an uncaught exception,
 the transaction is rolled back.
-If :attr:`~Connection.autocommit` is ``False``,
-a new transaction is implicitly opened after committing or rolling back.
 
 If there is no open transaction upon leaving the body of the ``with`` statement,
-or if :attr:`~Connection.autocommit` is ``True``,
-the context manager does nothing.
+the context manager is a no-op.
 
 .. note::
 
@@ -2492,72 +2355,13 @@ instead of a :class:`~collections.namedtuple`.
 Explanation
 -----------
 
-.. _sqlite3-transaction-control:
 .. _sqlite3-controlling-transactions:
 
 Transaction control
 ^^^^^^^^^^^^^^^^^^^
 
-:mod:`!sqlite3` offers multiple methods of controlling whether,
-when and how database transactions are opened and closed.
-:ref:`sqlite3-transaction-control-autocommit` is recommended,
-while :ref:`sqlite3-transaction-control-isolation-level`
-retains the pre-Python 3.12 behaviour.
-
-.. _sqlite3-transaction-control-autocommit:
-
-Transaction control via the ``autocommit`` attribute
-""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-The recommended way of controlling transaction behaviour is through
-the :attr:`Connection.autocommit` attribute,
-which should preferably be set using the *autocommit* parameter
-of :func:`connect`.
-
-It is suggested to set *autocommit* to ``False``,
-which implies :pep:`249`-compliant transaction control.
-This means:
-
-* :mod:`!sqlite3` ensures that a transaction is always open,
-  so :func:`connect`, :meth:`Connection.commit`, and :meth:`Connection.rollback`
-  will implicitly open a new transaction
-  (immediately after closing the pending one, for the latter two).
-  :mod:`!sqlite3` uses ``BEGIN DEFERRED`` statements when opening transactions.
-* Transactions should be committed explicitly using :meth:`!commit`.
-* Transactions should be rolled back explicitly using :meth:`!rollback`.
-* An implicit rollback is performed if the database is
-  :meth:`~Connection.close`-ed with pending changes.
-
-Set *autocommit* to ``True`` to enable SQLite's `autocommit mode`_.
-In this mode, :meth:`Connection.commit` and :meth:`Connection.rollback`
-have no effect.
-Note that SQLite's autocommit mode is distinct from
-the :pep:`249`-compliant :attr:`Connection.autocommit` attribute;
-use :attr:`Connection.in_transaction` to query
-the low-level SQLite autocommit mode.
-
-Set *autocommit* to :data:`LEGACY_TRANSACTION_CONTROL`
-to leave transaction control behaviour to the
-:attr:`Connection.isolation_level` attribute.
-See :ref:`sqlite3-transaction-control-isolation-level` for more information.
-
-
-.. _sqlite3-transaction-control-isolation-level:
-
-Transaction control via the ``isolation_level`` attribute
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-.. note::
-
-   The recommended way of controlling transactions is via the
-   :attr:`~Connection.autocommit` attribute.
-   See :ref:`sqlite3-transaction-control-autocommit`.
-
-If :attr:`Connection.autocommit` is set to
-:data:`LEGACY_TRANSACTION_CONTROL` (the default),
-transaction behaviour is controlled using
-the :attr:`Connection.isolation_level` attribute.
-Otherwise, :attr:`!isolation_level` has no effect.
+The :mod:`!sqlite3` module does not adhere to the transaction handling recommended
+by :pep:`249`.
 
 If the connection attribute :attr:`~Connection.isolation_level`
 is not ``None``,
@@ -2587,10 +2391,6 @@ regardless of the value of :attr:`~Connection.isolation_level`.
 .. versionchanged:: 3.6
    :mod:`!sqlite3` used to implicitly commit an open transaction before DDL
    statements.  This is no longer the case.
-
-.. versionchanged:: 3.12
-   The recommended way of controlling transactions is now via the
-   :attr:`~Connection.autocommit` attribute.
 
 .. _autocommit mode:
    https://www.sqlite.org/lang_transaction.html#implicit_versus_explicit_transactions

@@ -784,14 +784,16 @@ PyTclObject_string(PyTclObject *self, void *ignored)
         if (!self->string)
             return NULL;
     }
-    return Py_NewRef(self->string);
+    Py_INCREF(self->string);
+    return self->string;
 }
 
 static PyObject *
 PyTclObject_str(PyTclObject *self)
 {
     if (self->string) {
-        return Py_NewRef(self->string);
+        Py_INCREF(self->string);
+        return self->string;
     }
     /* XXX Could cache result if it is non-ASCII. */
     return unicodeFromTclObj(self->value);
@@ -1105,7 +1107,8 @@ fromBignumObj(TkappObject *tkapp, Tcl_Obj *value)
     PyMem_Free(bytes);
     if (res != NULL && bigValue.sign == MP_NEG) {
         PyObject *res2 = PyNumber_Negative(res);
-        Py_SETREF(res, res2);
+        Py_DECREF(res);
+        res = res2;
     }
     mp_clear(&bigValue);
     return res;
@@ -1733,7 +1736,8 @@ SetVar(TkappObject *self, PyObject *args, int flags)
         if (!ok)
             Tkinter_Error(self);
         else {
-            res = Py_NewRef(Py_None);
+            res = Py_None;
+            Py_INCREF(res);
         }
         LEAVE_OVERLAP_TCL
         break;
@@ -1751,7 +1755,8 @@ SetVar(TkappObject *self, PyObject *args, int flags)
         if (!ok)
             Tkinter_Error(self);
         else {
-            res = Py_NewRef(Py_None);
+            res = Py_None;
+            Py_INCREF(res);
         }
         LEAVE_OVERLAP_TCL
         break;
@@ -1837,7 +1842,8 @@ UnsetVar(TkappObject *self, PyObject *args, int flags)
     if (code == TCL_ERROR)
         res = Tkinter_Error(self);
     else {
-        res = Py_NewRef(Py_None);
+        Py_INCREF(Py_None);
+        res = Py_None;
     }
     LEAVE_OVERLAP_TCL
     return res;
@@ -1877,7 +1883,8 @@ _tkinter_tkapp_getint(TkappObject *self, PyObject *arg)
     PyObject *result;
 
     if (PyLong_Check(arg)) {
-        return Py_NewRef(arg);
+        Py_INCREF(arg);
+        return arg;
     }
 
     if (PyTclObject_Check(arg)) {
@@ -1921,7 +1928,8 @@ _tkinter_tkapp_getdouble(TkappObject *self, PyObject *arg)
     double v;
 
     if (PyFloat_Check(arg)) {
-        return Py_NewRef(arg);
+        Py_INCREF(arg);
+        return arg;
     }
 
     if (PyNumber_Check(arg)) {
@@ -2137,7 +2145,8 @@ _tkinter_tkapp_splitlist(TkappObject *self, PyObject *arg)
         return v;
     }
     if (PyTuple_Check(arg)) {
-        return Py_NewRef(arg);
+        Py_INCREF(arg);
+        return arg;
     }
     if (PyList_Check(arg)) {
         return PySequence_Tuple(arg);
@@ -2163,7 +2172,8 @@ _tkinter_tkapp_splitlist(TkappObject *self, PyObject *arg)
     for (i = 0; i < argc; i++) {
         PyObject *s = unicodeFromTclString(argv[i]);
         if (!s) {
-            Py_SETREF(v, NULL);
+            Py_DECREF(v);
+            v = NULL;
             goto finally;
         }
         PyTuple_SET_ITEM(v, i, s);
@@ -2312,8 +2322,10 @@ _tkinter_tkapp_createcommand_impl(TkappObject *self, const char *name,
     data = PyMem_NEW(PythonCmd_ClientData, 1);
     if (!data)
         return PyErr_NoMemory();
-    data->self = Py_NewRef(self);
-    data->func = Py_NewRef(func);
+    Py_INCREF(self);
+    Py_INCREF(func);
+    data->self = (PyObject *) self;
+    data->func = func;
     if (self->threaded && self->thread_id != Tcl_GetCurrentThread()) {
         Tcl_Condition cond = NULL;
         CommandEvent *ev = (CommandEvent*)attemptckalloc(sizeof(CommandEvent));
@@ -2418,8 +2430,10 @@ NewFHCD(PyObject *func, PyObject *file, int id)
     FileHandler_ClientData *p;
     p = PyMem_NEW(FileHandler_ClientData, 1);
     if (p != NULL) {
-        p->func = Py_XNewRef(func);
-        p->file = Py_XNewRef(file);
+        Py_XINCREF(func);
+        Py_XINCREF(file);
+        p->func = func;
+        p->file = file;
         p->id = id;
         p->next = HeadFHCD;
         HeadFHCD = p;
@@ -2577,11 +2591,13 @@ Tktt_New(PyObject *func)
     if (v == NULL)
         return NULL;
 
+    Py_INCREF(func);
     v->token = NULL;
-    v->func = Py_NewRef(func);
+    v->func = func;
 
     /* Extra reference, deleted when called or when handler is deleted */
-    return (TkttObject*)Py_NewRef(v);
+    Py_INCREF(v);
+    return v;
 }
 
 static void
@@ -2832,7 +2848,7 @@ Tkapp_WantObjects(PyObject *self, PyObject *args)
 {
 
     int wantobjects = -1;
-    if (!PyArg_ParseTuple(args, "|p:wantobjects", &wantobjects))
+    if (!PyArg_ParseTuple(args, "|i:wantobjects", &wantobjects))
         return NULL;
     if (wantobjects == -1)
         return PyBool_FromLong(((TkappObject*)self)->wantobjects);
@@ -2924,8 +2940,9 @@ _flatten1(FlattenContext* context, PyObject* item, int depth)
                 if (context->size + 1 > context->maxsize &&
                     !_bump(context, 1))
                     return 0;
+                Py_INCREF(o);
                 PyTuple_SET_ITEM(context->tuple,
-                                 context->size++, Py_NewRef(o));
+                                 context->size++, o);
             }
         }
     } else {
@@ -2978,11 +2995,11 @@ _tkinter.create
     screenName: str(accept={str, NoneType}) = None
     baseName: str = ""
     className: str = "Tk"
-    interactive: bool = False
-    wantobjects: bool = False
-    wantTk: bool = True
+    interactive: bool(accept={int}) = False
+    wantobjects: bool(accept={int}) = False
+    wantTk: bool(accept={int}) = True
         if false, then Tk_Init() doesn't get called
-    sync: bool = False
+    sync: bool(accept={int}) = False
         if true, then pass -sync to wish
     use: str(accept={str, NoneType}) = None
         if not None, then pass -use to wish
@@ -2995,7 +3012,7 @@ _tkinter_create_impl(PyObject *module, const char *screenName,
                      const char *baseName, const char *className,
                      int interactive, int wantobjects, int wantTk, int sync,
                      const char *use)
-/*[clinic end generated code: output=e3315607648e6bb4 input=09afef9adea70a19]*/
+/*[clinic end generated code: output=e3315607648e6bb4 input=da9b17ee7358d862]*/
 {
     /* XXX baseName is not used anymore;
      * try getting rid of it. */
@@ -3249,7 +3266,8 @@ PyInit__tkinter(void)
         Py_DECREF(m);
         return NULL;
     }
-    if (PyModule_AddObject(m, "TclError", Py_NewRef(o))) {
+    Py_INCREF(o);
+    if (PyModule_AddObject(m, "TclError", o)) {
         Py_DECREF(o);
         Py_DECREF(m);
         return NULL;

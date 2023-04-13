@@ -343,35 +343,14 @@ attributes (see :ref:`import-mod-attrs` for module attributes):
 
 .. function:: iscoroutinefunction(object)
 
-   Return ``True`` if the object is a :term:`coroutine function` (a function
-   defined with an :keyword:`async def` syntax), a :func:`functools.partial`
-   wrapping a :term:`coroutine function`, or a sync function marked with
-   :func:`markcoroutinefunction`.
+   Return ``True`` if the object is a :term:`coroutine function`
+   (a function defined with an :keyword:`async def` syntax).
 
    .. versionadded:: 3.5
 
    .. versionchanged:: 3.8
       Functions wrapped in :func:`functools.partial` now return ``True`` if the
       wrapped function is a :term:`coroutine function`.
-
-   .. versionchanged:: 3.12
-      Sync functions marked with :func:`markcoroutinefunction` now return
-      ``True``.
-
-
-.. function:: markcoroutinefunction(func)
-
-   Decorator to mark a callable as a :term:`coroutine function` if it would not
-   otherwise be detected by :func:`iscoroutinefunction`.
-
-   This may be of use for sync functions that return a :term:`coroutine`, if
-   the function is passed to an API that requires :func:`iscoroutinefunction`.
-
-   When possible, using an :keyword:`async def` function is preferred. Also
-   acceptable is calling the function and testing the return with
-   :func:`iscoroutine`.
-
-   .. versionadded:: 3.12
 
 
 .. function:: iscoroutine(object)
@@ -574,6 +553,8 @@ Retrieving source code
    object and the line number indicates where in the original source file the first
    line of code was found.  An :exc:`OSError` is raised if the source code cannot
    be retrieved.
+   A :exc:`TypeError` is raised if the object is a built-in module, class, or
+   function.
 
    .. versionchanged:: 3.3
       :exc:`OSError` is raised instead of :exc:`IOError`, now an alias of the
@@ -586,6 +567,8 @@ Retrieving source code
    class, method, function, traceback, frame, or code object.  The source code is
    returned as a single string.  An :exc:`OSError` is raised if the source code
    cannot be retrieved.
+   A :exc:`TypeError` is raised if the object is a built-in module, class, or
+   function.
 
    .. versionchanged:: 3.3
       :exc:`OSError` is raised instead of :exc:`IOError`, now an alias of the
@@ -736,7 +719,6 @@ function.
 
          >>> def test(a, b):
          ...     pass
-         ...
          >>> sig = signature(test)
          >>> new_sig = sig.replace(return_annotation="new return anno")
          >>> str(new_sig)
@@ -802,8 +784,9 @@ function.
 
    .. attribute:: Parameter.kind
 
-      Describes how argument values are bound to the parameter.  Possible values
-      (accessible via :class:`Parameter`, like ``Parameter.KEYWORD_ONLY``):
+      Describes how argument values are bound to the parameter.  The possible
+      values are accessible via :class:`Parameter` (like ``Parameter.KEYWORD_ONLY``),
+      and support comparison and ordering, in the following order:
 
       .. tabularcolumns:: |l|L|
 
@@ -1076,7 +1059,6 @@ Classes and functions
     >>> from inspect import getcallargs
     >>> def f(a, b=1, *pos, **named):
     ...     pass
-    ...
     >>> getcallargs(f, 1, 2, 3) == {'a': 1, 'named': {}, 'b': 2, 'pos': (3,)}
     True
     >>> getcallargs(f, a=2, x=4) == {'a': 2, 'named': {'x': 4}, 'b': 1, 'pos': ()}

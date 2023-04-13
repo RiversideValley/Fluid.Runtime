@@ -45,7 +45,8 @@ PyObject_Type(PyObject *o)
     }
 
     v = (PyObject *)Py_TYPE(o);
-    return Py_NewRef(v);
+    Py_INCREF(v);
+    return v;
 }
 
 Py_ssize_t
@@ -525,12 +526,18 @@ _Py_add_one_to_index_C(int nd, Py_ssize_t *index, const Py_ssize_t *shape)
 Py_ssize_t
 PyBuffer_SizeFromFormat(const char *format)
 {
+    PyObject *structmodule = NULL;
     PyObject *calcsize = NULL;
     PyObject *res = NULL;
     PyObject *fmt = NULL;
     Py_ssize_t itemsize = -1;
 
-    calcsize = _PyImport_GetModuleAttrString("struct", "calcsize");
+    structmodule = PyImport_ImportModule("struct");
+    if (structmodule == NULL) {
+        return itemsize;
+    }
+
+    calcsize = PyObject_GetAttrString(structmodule, "calcsize");
     if (calcsize == NULL) {
         goto done;
     }
@@ -551,6 +558,7 @@ PyBuffer_SizeFromFormat(const char *format)
     }
 
 done:
+    Py_DECREF(structmodule);
     Py_XDECREF(calcsize);
     Py_XDECREF(fmt);
     Py_XDECREF(res);
@@ -721,7 +729,9 @@ PyBuffer_FillInfo(Py_buffer *view, PyObject *obj, void *buf, Py_ssize_t len,
         return -1;
     }
 
-    view->obj = Py_XNewRef(obj);
+    view->obj = obj;
+    if (obj)
+        Py_INCREF(obj);
     view->buf = buf;
     view->len = len;
     view->readonly = readonly;
@@ -773,7 +783,8 @@ PyObject_Format(PyObject *obj, PyObject *format_spec)
     /* Fast path for common types. */
     if (format_spec == NULL || PyUnicode_GET_LENGTH(format_spec) == 0) {
         if (PyUnicode_CheckExact(obj)) {
-            return Py_NewRef(obj);
+            Py_INCREF(obj);
+            return obj;
         }
         if (PyLong_CheckExact(obj)) {
             return PyObject_Str(obj);
@@ -806,7 +817,8 @@ PyObject_Format(PyObject *obj, PyObject *format_spec)
         PyErr_Format(PyExc_TypeError,
                      "__format__ must return a str, not %.200s",
                      Py_TYPE(result)->tp_name);
-        Py_SETREF(result, NULL);
+        Py_DECREF(result);
+        result = NULL;
         goto done;
     }
 
@@ -1400,7 +1412,8 @@ _PyNumber_Index(PyObject *item)
     }
 
     if (PyLong_Check(item)) {
-        return Py_NewRef(item);
+        Py_INCREF(item);
+        return item;
     }
     if (!_PyIndex_Check(item)) {
         PyErr_Format(PyExc_TypeError,
@@ -1514,7 +1527,8 @@ PyNumber_Long(PyObject *o)
     }
 
     if (PyLong_CheckExact(o)) {
-        return Py_NewRef(o);
+        Py_INCREF(o);
+        return o;
     }
     m = Py_TYPE(o)->tp_as_number;
     if (m && m->nb_int) { /* This should include subclasses of int */
@@ -2038,7 +2052,8 @@ PySequence_Tuple(PyObject *v)
            a tuple *subclass* instance as-is, hence the restriction
            to exact tuples here.  In contrast, lists always make
            a copy, so there's no need for exactness below. */
-        return Py_NewRef(v);
+        Py_INCREF(v);
+        return v;
     }
     if (PyList_CheckExact(v))
         return PyList_AsTuple(v);
@@ -2136,7 +2151,8 @@ PySequence_Fast(PyObject *v, const char *m)
     }
 
     if (PyList_CheckExact(v) || PyTuple_CheckExact(v)) {
-        return Py_NewRef(v);
+        Py_INCREF(v);
+        return v;
     }
 
     it = PyObject_GetIter(v);
@@ -2790,7 +2806,8 @@ PyObject_GetIter(PyObject *o)
                          "iter() returned non-iterator "
                          "of type '%.100s'",
                          Py_TYPE(res)->tp_name);
-            Py_SETREF(res, NULL);
+            Py_DECREF(res);
+            res = NULL;
         }
         return res;
     }
@@ -2810,7 +2827,8 @@ PyObject_GetAIter(PyObject *o) {
         PyErr_Format(PyExc_TypeError,
                      "aiter() returned not an async iterator of type '%.100s'",
                      Py_TYPE(it)->tp_name);
-        Py_SETREF(it, NULL);
+        Py_DECREF(it);
+        it = NULL;
     }
     return it;
 }

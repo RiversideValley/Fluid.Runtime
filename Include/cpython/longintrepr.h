@@ -79,14 +79,9 @@ typedef long stwodigits; /* signed variant of twodigits */
    aware that ints abuse  ob_size's sign bit.
 */
 
-typedef struct _PyLongValue {
-    Py_ssize_t ob_size; /* Number of items in variable part */
-    digit ob_digit[1];
-} _PyLongValue;
-
 struct _longobject {
-    PyObject_HEAD
-    _PyLongValue long_value;
+    PyObject_VAR_HEAD
+    digit ob_digit[1];
 };
 
 PyAPI_FUNC(PyLongObject *) _PyLong_New(Py_ssize_t);

@@ -73,7 +73,7 @@ something into it:
 
 .. code-block:: shell-session
 
-    $ python3 -m venv example
+    $ python -m venv example
     $ source example/bin/activate
     (example) $ python -m pip install wheel
 
@@ -176,10 +176,11 @@ for more information on entry points, their definition, and usage.
 The "selectable" entry points were introduced in ``importlib_metadata``
 3.6 and Python 3.10. Prior to those changes, ``entry_points`` accepted
 no parameters and always returned a dictionary of entry points, keyed
-by group. With ``importlib_metadata`` 5.0 and Python 3.12,
-``entry_points`` always returns an ``EntryPoints`` object. See
-`backports.entry_points_selectable <https://pypi.org/project/backports.entry_points_selectable>`_
-for compatibility options.
+by group. For compatibility, if no parameters are passed to entry_points,
+a ``SelectableGroups`` object is returned, implementing that dict
+interface. In the future, calling ``entry_points`` with no parameters
+will return an ``EntryPoints`` object. Users should rely on the selection
+interface to retrieve entry points by group.
 
 
 .. _metadata:
@@ -360,7 +361,7 @@ Because `Distribution Package <https://packaging.python.org/en/latest/glossary/#
 is not available through :data:`sys.path` searches, or
 package loaders directly,
 the metadata for a distribution is found through import
-system :ref:`finders <finders-and-loaders>`.  To find a distribution package's metadata,
+system `finders`_.  To find a distribution package's metadata,
 ``importlib.metadata`` queries the list of :term:`meta path finders <meta path finder>` on
 :data:`sys.meta_path`.
 
@@ -396,3 +397,4 @@ a custom finder, return instances of this derived ``Distribution`` in the
 
 .. _`entry point API`: https://setuptools.readthedocs.io/en/latest/pkg_resources.html#entry-points
 .. _`metadata API`: https://setuptools.readthedocs.io/en/latest/pkg_resources.html#metadata-api
+.. _`finders`: https://docs.python.org/3/reference/import.html#finders-and-loaders

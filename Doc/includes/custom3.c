@@ -1,6 +1,6 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include <stddef.h> /* for offsetof() */
+#include "structmember.h"
 
 typedef struct {
     PyObject_HEAD
@@ -42,7 +42,7 @@ static int
 Custom_init(CustomObject *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {"first", "last", "number", NULL};
-    PyObject *first = NULL, *last = NULL;
+    PyObject *first = NULL, *last = NULL, *tmp;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|UUi", kwlist,
                                      &first, &last,
@@ -50,16 +50,22 @@ Custom_init(CustomObject *self, PyObject *args, PyObject *kwds)
         return -1;
 
     if (first) {
-        Py_SETREF(self->first, Py_NewRef(first));
+        tmp = self->first;
+        Py_INCREF(first);
+        self->first = first;
+        Py_DECREF(tmp);
     }
     if (last) {
-        Py_SETREF(self->last, Py_NewRef(last));
+        tmp = self->last;
+        Py_INCREF(last);
+        self->last = last;
+        Py_DECREF(tmp);
     }
     return 0;
 }
 
 static PyMemberDef Custom_members[] = {
-    {"number", Py_T_INT, offsetof(CustomObject, number), 0,
+    {"number", T_INT, offsetof(CustomObject, number), 0,
      "custom number"},
     {NULL}  /* Sentinel */
 };
@@ -67,12 +73,14 @@ static PyMemberDef Custom_members[] = {
 static PyObject *
 Custom_getfirst(CustomObject *self, void *closure)
 {
-    return Py_NewRef(self->first);
+    Py_INCREF(self->first);
+    return self->first;
 }
 
 static int
 Custom_setfirst(CustomObject *self, PyObject *value, void *closure)
 {
+    PyObject *tmp;
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete the first attribute");
         return -1;
@@ -82,19 +90,24 @@ Custom_setfirst(CustomObject *self, PyObject *value, void *closure)
                         "The first attribute value must be a string");
         return -1;
     }
-    Py_SETREF(self->first, Py_NewRef(value));
+    tmp = self->first;
+    Py_INCREF(value);
+    self->first = value;
+    Py_DECREF(tmp);
     return 0;
 }
 
 static PyObject *
 Custom_getlast(CustomObject *self, void *closure)
 {
-    return Py_NewRef(self->last);
+    Py_INCREF(self->last);
+    return self->last;
 }
 
 static int
 Custom_setlast(CustomObject *self, PyObject *value, void *closure)
 {
+    PyObject *tmp;
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete the last attribute");
         return -1;
@@ -104,7 +117,10 @@ Custom_setlast(CustomObject *self, PyObject *value, void *closure)
                         "The last attribute value must be a string");
         return -1;
     }
-    Py_SETREF(self->last, Py_NewRef(value));
+    tmp = self->last;
+    Py_INCREF(value);
+    self->last = value;
+    Py_DECREF(tmp);
     return 0;
 }
 
@@ -162,7 +178,9 @@ PyInit_custom3(void)
     if (m == NULL)
         return NULL;
 
-    if (PyModule_AddObjectRef(m, "Custom", (PyObject *) &CustomType) < 0) {
+    Py_INCREF(&CustomType);
+    if (PyModule_AddObject(m, "Custom", (PyObject *) &CustomType) < 0) {
+        Py_DECREF(&CustomType);
         Py_DECREF(m);
         return NULL;
     }

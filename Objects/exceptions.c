@@ -8,7 +8,6 @@
 #include <Python.h>
 #include <stdbool.h>
 #include "pycore_ceval.h"         // _Py_EnterRecursiveCall
-#include "pycore_pyerrors.h"      // struct _PyErr_SetRaisedException
 #include "pycore_exceptions.h"    // struct _Py_exc_state
 #include "pycore_initconfig.h"
 #include "pycore_object.h"
@@ -54,7 +53,8 @@ BaseException_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self->suppress_context = 0;
 
     if (args) {
-        self->args = Py_NewRef(args);
+        self->args = args;
+        Py_INCREF(args);
         return (PyObject *)self;
     }
 
@@ -73,7 +73,9 @@ BaseException_init(PyBaseExceptionObject *self, PyObject *args, PyObject *kwds)
     if (!_PyArg_NoKeywords(Py_TYPE(self)->tp_name, kwds))
         return -1;
 
-    Py_XSETREF(self->args, Py_NewRef(args));
+    Py_INCREF(args);
+    Py_XSETREF(self->args, args);
+
     return 0;
 }
 
@@ -183,7 +185,8 @@ BaseException_with_traceback(PyObject *self, PyObject *tb) {
     if (PyException_SetTraceback(self, tb))
         return NULL;
 
-    return Py_NewRef(self);
+    Py_INCREF(self);
+    return self;
 }
 
 PyDoc_STRVAR(with_traceback_doc,
@@ -255,7 +258,8 @@ BaseException_get_args(PyBaseExceptionObject *self, void *Py_UNUSED(ignored))
     if (self->args == NULL) {
         Py_RETURN_NONE;
     }
-    return Py_NewRef(self->args);
+    Py_INCREF(self->args);
+    return self->args;
 }
 
 static int
@@ -279,7 +283,8 @@ BaseException_get_tb(PyBaseExceptionObject *self, void *Py_UNUSED(ignored))
     if (self->traceback == NULL) {
         Py_RETURN_NONE;
     }
-    return Py_NewRef(self->traceback);
+    Py_INCREF(self->traceback);
+    return self->traceback;
 }
 
 static int
@@ -289,17 +294,14 @@ BaseException_set_tb(PyBaseExceptionObject *self, PyObject *tb, void *Py_UNUSED(
         PyErr_SetString(PyExc_TypeError, "__traceback__ may not be deleted");
         return -1;
     }
-    if (PyTraceBack_Check(tb)) {
-        Py_XSETREF(self->traceback, Py_NewRef(tb));
-    }
-    else if (tb == Py_None) {
-        Py_CLEAR(self->traceback);
-    }
-    else {
+    else if (!(tb == Py_None || PyTraceBack_Check(tb))) {
         PyErr_SetString(PyExc_TypeError,
                         "__traceback__ must be a traceback or None");
         return -1;
     }
+
+    Py_INCREF(tb);
+    Py_XSETREF(self->traceback, tb);
     return 0;
 }
 
@@ -378,7 +380,8 @@ PyObject *
 PyException_GetTraceback(PyObject *self)
 {
     PyBaseExceptionObject *base_self = _PyBaseExceptionObject_cast(self);
-    return Py_XNewRef(base_self->traceback);
+    Py_XINCREF(base_self->traceback);
+    return base_self->traceback;
 }
 
 
@@ -392,7 +395,8 @@ PyObject *
 PyException_GetCause(PyObject *self)
 {
     PyObject *cause = _PyBaseExceptionObject_cast(self)->cause;
-    return Py_XNewRef(cause);
+    Py_XINCREF(cause);
+    return cause;
 }
 
 /* Steals a reference to cause */
@@ -408,7 +412,8 @@ PyObject *
 PyException_GetContext(PyObject *self)
 {
     PyObject *context = _PyBaseExceptionObject_cast(self)->context;
-    return Py_XNewRef(context);
+    Py_XINCREF(context);
+    return context;
 }
 
 /* Steals a reference to context */
@@ -416,20 +421,6 @@ void
 PyException_SetContext(PyObject *self, PyObject *context)
 {
     Py_XSETREF(_PyBaseExceptionObject_cast(self)->context, context);
-}
-
-PyObject *
-PyException_GetArgs(PyObject *self)
-{
-    PyObject *args = _PyBaseExceptionObject_cast(self)->args;
-    return Py_NewRef(args);
-}
-
-void
-PyException_SetArgs(PyObject *self, PyObject *args)
-{
-    Py_INCREF(args);
-    Py_XSETREF(_PyBaseExceptionObject_cast(self)->args, args);
 }
 
 const char *
@@ -588,7 +579,8 @@ StopIteration_init(PyStopIterationObject *self, PyObject *args, PyObject *kwds)
         value = PyTuple_GET_ITEM(args, 0);
     else
         value = Py_None;
-    self->value = Py_NewRef(value);
+    Py_INCREF(value);
+    self->value = value;
     return 0;
 }
 
@@ -614,9 +606,17 @@ StopIteration_traverse(PyStopIterationObject *self, visitproc visit, void *arg)
     return BaseException_traverse((PyBaseExceptionObject *)self, visit, arg);
 }
 
-ComplexExtendsException(PyExc_Exception, StopIteration, StopIteration,
-                        0, 0, StopIteration_members, 0, 0,
-                        "Signal the end from iterator.__next__().");
+ComplexExtendsException(
+    PyExc_Exception,       /* base */
+    StopIteration,         /* name */
+    StopIteration,         /* prefix for *_init, etc */
+    0,                     /* new */
+    0,                     /* methods */
+    StopIteration_members, /* members */
+    0,                     /* getset */
+    0,                     /* str */
+    "Signal the end from iterator.__next__()."
+);
 
 
 /*
@@ -641,10 +641,12 @@ SystemExit_init(PySystemExitObject *self, PyObject *args, PyObject *kwds)
     if (size == 0)
         return 0;
     if (size == 1) {
-        Py_XSETREF(self->code, Py_NewRef(PyTuple_GET_ITEM(args, 0)));
+        Py_INCREF(PyTuple_GET_ITEM(args, 0));
+        Py_XSETREF(self->code, PyTuple_GET_ITEM(args, 0));
     }
     else { /* size > 1 */
-        Py_XSETREF(self->code, Py_NewRef(args));
+        Py_INCREF(args);
+        Py_XSETREF(self->code, args);
     }
     return 0;
 }
@@ -1491,12 +1493,11 @@ SimpleExtendsException(PyExc_BaseException, KeyboardInterrupt,
 static int
 ImportError_init(PyImportErrorObject *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = {"name", "path", "name_from", 0};
+    static char *kwlist[] = {"name", "path", 0};
     PyObject *empty_tuple;
     PyObject *msg = NULL;
     PyObject *name = NULL;
     PyObject *path = NULL;
-    PyObject *name_from = NULL;
 
     if (BaseException_init((PyBaseExceptionObject *)self, args, NULL) == -1)
         return -1;
@@ -1504,19 +1505,22 @@ ImportError_init(PyImportErrorObject *self, PyObject *args, PyObject *kwds)
     empty_tuple = PyTuple_New(0);
     if (!empty_tuple)
         return -1;
-    if (!PyArg_ParseTupleAndKeywords(empty_tuple, kwds, "|$OOO:ImportError", kwlist,
-                                     &name, &path, &name_from)) {
+    if (!PyArg_ParseTupleAndKeywords(empty_tuple, kwds, "|$OO:ImportError", kwlist,
+                                     &name, &path)) {
         Py_DECREF(empty_tuple);
         return -1;
     }
     Py_DECREF(empty_tuple);
 
-    Py_XSETREF(self->name, Py_XNewRef(name));
-    Py_XSETREF(self->path, Py_XNewRef(path));
-    Py_XSETREF(self->name_from, Py_XNewRef(name_from));
+    Py_XINCREF(name);
+    Py_XSETREF(self->name, name);
+
+    Py_XINCREF(path);
+    Py_XSETREF(self->path, path);
 
     if (PyTuple_GET_SIZE(args) == 1) {
-        msg = Py_NewRef(PyTuple_GET_ITEM(args, 0));
+        msg = PyTuple_GET_ITEM(args, 0);
+        Py_INCREF(msg);
     }
     Py_XSETREF(self->msg, msg);
 
@@ -1529,7 +1533,6 @@ ImportError_clear(PyImportErrorObject *self)
     Py_CLEAR(self->msg);
     Py_CLEAR(self->name);
     Py_CLEAR(self->path);
-    Py_CLEAR(self->name_from);
     return BaseException_clear((PyBaseExceptionObject *)self);
 }
 
@@ -1547,7 +1550,6 @@ ImportError_traverse(PyImportErrorObject *self, visitproc visit, void *arg)
     Py_VISIT(self->msg);
     Py_VISIT(self->name);
     Py_VISIT(self->path);
-    Py_VISIT(self->name_from);
     return BaseException_traverse((PyBaseExceptionObject *)self, visit, arg);
 }
 
@@ -1555,7 +1557,8 @@ static PyObject *
 ImportError_str(PyImportErrorObject *self)
 {
     if (self->msg && PyUnicode_CheckExact(self->msg)) {
-        return Py_NewRef(self->msg);
+        Py_INCREF(self->msg);
+        return self->msg;
     }
     else {
         return BaseException_str((PyBaseExceptionObject *)self);
@@ -1566,7 +1569,7 @@ static PyObject *
 ImportError_getstate(PyImportErrorObject *self)
 {
     PyObject *dict = ((PyBaseExceptionObject *)self)->dict;
-    if (self->name || self->path || self->name_from) {
+    if (self->name || self->path) {
         dict = dict ? PyDict_Copy(dict) : PyDict_New();
         if (dict == NULL)
             return NULL;
@@ -1578,14 +1581,11 @@ ImportError_getstate(PyImportErrorObject *self)
             Py_DECREF(dict);
             return NULL;
         }
-        if (self->name_from && PyDict_SetItem(dict, &_Py_ID(name_from), self->name_from) < 0) {
-            Py_DECREF(dict);
-            return NULL;
-        }
         return dict;
     }
     else if (dict) {
-        return Py_NewRef(dict);
+        Py_INCREF(dict);
+        return dict;
     }
     else {
         Py_RETURN_NONE;
@@ -1617,8 +1617,6 @@ static PyMemberDef ImportError_members[] = {
         PyDoc_STR("module name")},
     {"path", T_OBJECT, offsetof(PyImportErrorObject, path), 0,
         PyDoc_STR("module path")},
-    {"name_from", T_OBJECT, offsetof(PyImportErrorObject, name_from), 0,
-        PyDoc_STR("name imported from module")},
     {NULL}  /* Sentinel */
 };
 
@@ -1712,7 +1710,8 @@ oserror_parse_args(PyObject **p_args,
             PyTuple_SET_ITEM(newargs, 0, *myerrno);
             for (i = 1; i < nargs; i++) {
                 PyObject *val = PyTuple_GET_ITEM(args, i);
-                PyTuple_SET_ITEM(newargs, i, Py_NewRef(val));
+                Py_INCREF(val);
+                PyTuple_SET_ITEM(newargs, i, val);
             }
             Py_DECREF(args);
             args = *p_args = newargs;
@@ -1747,10 +1746,12 @@ oserror_init(PyOSErrorObject *self, PyObject **p_args,
                 return -1;
         }
         else {
-            self->filename = Py_NewRef(filename);
+            Py_INCREF(filename);
+            self->filename = filename;
 
             if (filename2 && filename2 != Py_None) {
-                self->filename2 = Py_NewRef(filename2);
+                Py_INCREF(filename2);
+                self->filename2 = filename2;
             }
 
             if (nargs >= 2 && nargs <= 5) {
@@ -1765,10 +1766,15 @@ oserror_init(PyOSErrorObject *self, PyObject **p_args,
             }
         }
     }
-    self->myerrno = Py_XNewRef(myerrno);
-    self->strerror = Py_XNewRef(strerror);
+    Py_XINCREF(myerrno);
+    self->myerrno = myerrno;
+
+    Py_XINCREF(strerror);
+    self->strerror = strerror;
+
 #ifdef MS_WINDOWS
-    self->winerror = Py_XNewRef(winerror);
+    Py_XINCREF(winerror);
+    self->winerror = winerror;
 #endif
 
     /* Steals the reference to args */
@@ -1994,7 +2000,7 @@ static PyObject *
 OSError_reduce(PyOSErrorObject *self, PyObject *Py_UNUSED(ignored))
 {
     PyObject *args = self->args;
-    PyObject *res = NULL;
+    PyObject *res = NULL, *tmp;
 
     /* self->args is only the first two real arguments if there was a
      * file name given to OSError. */
@@ -2004,9 +2010,16 @@ OSError_reduce(PyOSErrorObject *self, PyObject *Py_UNUSED(ignored))
         if (!args)
             return NULL;
 
-        PyTuple_SET_ITEM(args, 0, Py_NewRef(PyTuple_GET_ITEM(self->args, 0)));
-        PyTuple_SET_ITEM(args, 1, Py_NewRef(PyTuple_GET_ITEM(self->args, 1)));
-        PyTuple_SET_ITEM(args, 2, Py_NewRef(self->filename));
+        tmp = PyTuple_GET_ITEM(self->args, 0);
+        Py_INCREF(tmp);
+        PyTuple_SET_ITEM(args, 0, tmp);
+
+        tmp = PyTuple_GET_ITEM(self->args, 1);
+        Py_INCREF(tmp);
+        PyTuple_SET_ITEM(args, 1, tmp);
+
+        Py_INCREF(self->filename);
+        PyTuple_SET_ITEM(args, 2, self->filename);
 
         if (self->filename2) {
             /*
@@ -2014,10 +2027,12 @@ OSError_reduce(PyOSErrorObject *self, PyObject *Py_UNUSED(ignored))
              * So, to recreate filename2, we need to pass in
              * winerror as well.
              */
-            PyTuple_SET_ITEM(args, 3, Py_NewRef(Py_None));
+            Py_INCREF(Py_None);
+            PyTuple_SET_ITEM(args, 3, Py_None);
 
             /* filename2 */
-            PyTuple_SET_ITEM(args, 4, Py_NewRef(self->filename2));
+            Py_INCREF(self->filename2);
+            PyTuple_SET_ITEM(args, 4, self->filename2);
         }
     } else
         Py_INCREF(args);
@@ -2178,7 +2193,8 @@ NameError_init(PyNameErrorObject *self, PyObject *args, PyObject *kwds)
     }
     Py_DECREF(empty_tuple);
 
-    Py_XSETREF(self->name, Py_XNewRef(name));
+    Py_XINCREF(name);
+    Py_XSETREF(self->name, name);
 
     return 0;
 }
@@ -2252,8 +2268,11 @@ AttributeError_init(PyAttributeErrorObject *self, PyObject *args, PyObject *kwds
     }
     Py_DECREF(empty_tuple);
 
-    Py_XSETREF(self->name, Py_XNewRef(name));
-    Py_XSETREF(self->obj, Py_XNewRef(obj));
+    Py_XINCREF(name);
+    Py_XSETREF(self->name, name);
+
+    Py_XINCREF(obj);
+    Py_XSETREF(self->obj, obj);
 
     return 0;
 }
@@ -2311,7 +2330,8 @@ SyntaxError_init(PySyntaxErrorObject *self, PyObject *args, PyObject *kwds)
         return -1;
 
     if (lenargs >= 1) {
-        Py_XSETREF(self->msg, Py_NewRef(PyTuple_GET_ITEM(args, 0)));
+        Py_INCREF(PyTuple_GET_ITEM(args, 0));
+        Py_XSETREF(self->msg, PyTuple_GET_ITEM(args, 0));
     }
     if (lenargs == 2) {
         info = PyTuple_GET_ITEM(args, 1);
@@ -2407,7 +2427,8 @@ my_basename(PyObject *name)
         return PyUnicode_Substring(name, offset, size);
     }
     else {
-        return Py_NewRef(name);
+        Py_INCREF(name);
+        return name;
     }
 }
 
@@ -2559,7 +2580,8 @@ get_string(PyObject *attr, const char *name)
         PyErr_Format(PyExc_TypeError, "%.200s attribute must be bytes", name);
         return NULL;
     }
-    return Py_NewRef(attr);
+    Py_INCREF(attr);
+    return attr;
 }
 
 static PyObject *
@@ -2575,7 +2597,8 @@ get_unicode(PyObject *attr, const char *name)
                      "%.200s attribute must be unicode", name);
         return NULL;
     }
-    return Py_NewRef(attr);
+    Py_INCREF(attr);
+    return attr;
 }
 
 static int
@@ -3207,19 +3230,20 @@ SimpleExtendsException(PyExc_Exception, ReferenceError,
 
 #define MEMERRORS_SAVE 16
 
-static PyBaseExceptionObject last_resort_memory_error;
-
 static PyObject *
-get_memory_error(int allow_allocation, PyObject *args, PyObject *kwds)
+MemoryError_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     PyBaseExceptionObject *self;
+
+    /* If this is a subclass of MemoryError, don't use the freelist
+     * and just return a fresh object */
+    if (type != (PyTypeObject *) PyExc_MemoryError) {
+        return BaseException_new(type, args, kwds);
+    }
+
     struct _Py_exc_state *state = get_exc_state();
     if (state->memerrors_freelist == NULL) {
-        if (!allow_allocation) {
-            return Py_NewRef(&last_resort_memory_error);
-        }
-        PyObject *result = BaseException_new((PyTypeObject *)PyExc_MemoryError, args, kwds);
-        return result;
+        return BaseException_new(type, args, kwds);
     }
 
     /* Fetch object from freelist and revive it */
@@ -3237,35 +3261,6 @@ get_memory_error(int allow_allocation, PyObject *args, PyObject *kwds)
     _Py_NewReference((PyObject *)self);
     _PyObject_GC_TRACK(self);
     return (PyObject *)self;
-}
-
-static PyBaseExceptionObject last_resort_memory_error;
-
-static PyObject *
-MemoryError_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    /* If this is a subclass of MemoryError, don't use the freelist
-     * and just return a fresh object */
-    if (type != (PyTypeObject *) PyExc_MemoryError) {
-        return BaseException_new(type, args, kwds);
-    }
-    return get_memory_error(1, args, kwds);
-}
-
-PyObject *
-_PyErr_NoMemory(PyThreadState *tstate)
-{
-    if (Py_IS_TYPE(PyExc_MemoryError, NULL)) {
-        /* PyErr_NoMemory() has been called before PyExc_MemoryError has been
-           initialized by _PyExc_Init() */
-        Py_FatalError("Out of memory and PyExc_MemoryError is not "
-                      "initialized yet");
-    }
-    PyObject *err = get_memory_error(0, NULL, NULL);
-    if (err != NULL) {
-        _PyErr_SetRaisedException(tstate, err);
-    }
-    return NULL;
 }
 
 static void
@@ -3299,7 +3294,6 @@ preallocate_memerrors(void)
     /* We create enough MemoryErrors and then decref them, which will fill
        up the freelist. */
     int i;
-
     PyObject *errors[MEMERRORS_SAVE];
     for (i = 0; i < MEMERRORS_SAVE; i++) {
         errors[i] = MemoryError_new((PyTypeObject *) PyExc_MemoryError,
@@ -3339,9 +3333,6 @@ static PyTypeObject _PyExc_MemoryError = {
 };
 PyObject *PyExc_MemoryError = (PyObject *) &_PyExc_MemoryError;
 
-static PyBaseExceptionObject last_resort_memory_error = {
-    _PyObject_IMMORTAL_INIT(&_PyExc_MemoryError)
-};
 
 /*
  *    BufferError extends Exception
@@ -3602,7 +3593,8 @@ _PyExc_InitTypes(PyInterpreterState *interp)
 
     for (size_t i=0; i < Py_ARRAY_LENGTH(static_exceptions); i++) {
         PyTypeObject *exc = static_exceptions[i].exc;
-        if (_PyStaticType_InitBuiltin(exc) < 0) {
+
+        if (PyType_Ready(exc) < 0) {
             return -1;
         }
     }
@@ -3858,7 +3850,11 @@ _PyErr_TrySetFromCause(const char *format, ...)
         Py_DECREF(tb);
     }
 
+#ifdef HAVE_STDARG_PROTOTYPES
     va_start(vargs, format);
+#else
+    va_start(vargs);
+#endif
     msg_prefix = PyUnicode_FromFormatV(format, vargs);
     va_end(vargs);
     if (msg_prefix == NULL) {

@@ -335,11 +335,10 @@ Notes:
       single: ceil() (in module math)
       single: trunc() (in module math)
       pair: numeric; conversions
-      pair: C; language
 
-   Conversion from floating point to integer may round or truncate
-   as in C; see functions :func:`math.floor` and :func:`math.ceil` for
-   well-defined conversions.
+   Conversion from :class:`float` to :class:`int` truncates, discarding the
+   fractional part. See functions :func:`math.floor` and :func:`math.ceil` for
+   alternative conversions.
 
 (4)
    float also accepts the strings "nan" and "inf" with an optional prefix "+"
@@ -353,7 +352,7 @@ Notes:
    The numeric literals accepted include the digits ``0`` to ``9`` or any
    Unicode equivalent (code points with the ``Nd`` property).
 
-   See `the Unicode Standard <https://unicode.org/Public/UNIDATA/extracted/DerivedNumericType.txt>`_
+   See https://www.unicode.org/Public/14.0.0/ucd/extracted/DerivedNumericType.txt
    for a complete list of code points with the ``Nd`` property.
 
 
@@ -530,11 +529,13 @@ class`. In addition, it provides a few more methods:
     is ``False``.
 
     The default values can be used to conveniently turn an integer into a
-    single byte object.  However, when using the default arguments, don't try
-    to convert a value greater than 255 or you'll get an :exc:`OverflowError`::
+    single byte object::
 
         >>> (65).to_bytes()
         b'A'
+
+    However, when using the default arguments, don't try
+    to convert a value greater than 255 or you'll get an :exc:`OverflowError`.
 
     Equivalent to::
 
@@ -608,12 +609,6 @@ class`. In addition, it provides a few more methods:
    denominator.
 
    .. versionadded:: 3.8
-
-.. method:: int.is_integer()
-
-   Returns ``True``. Exists for duck type compatibility with :meth:`float.is_integer`.
-
-   .. versionadded:: 3.12
 
 Additional Methods on Float
 ---------------------------
@@ -1528,7 +1523,7 @@ multiple fragments.
    printable string representation of *object*.  For string objects, this is
    the string itself.  If *object* does not have a :meth:`~object.__str__`
    method, then :func:`str` falls back to returning
-   :func:`repr(object) <repr>`.
+   :meth:`repr(object) <repr>`.
 
    .. index::
       single: buffer protocol; str (built-in class)
@@ -1603,9 +1598,8 @@ expression support in the :mod:`re` module).
    lowercase, :meth:`lower` would do nothing to ``'ß'``; :meth:`casefold`
    converts it to ``"ss"``.
 
-   The casefolding algorithm is
-   `described in section 3.13 of the Unicode Standard
-   <http://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G53253>`__.
+   The casefolding algorithm is described in section 3.13 of the Unicode
+   Standard.
 
    .. versionadded:: 3.3
 
@@ -1767,8 +1761,7 @@ expression support in the :mod:`re` module).
    one character, ``False`` otherwise.  Alphabetic characters are those characters defined
    in the Unicode character database as "Letter", i.e., those with general category
    property being one of "Lm", "Lt", "Lu", "Ll", or "Lo".  Note that this is different
-   from the `Alphabetic property defined in the Unicode Standard
-   <https://www.unicode.org/versions/Unicode15.0.0/ch04.pdf#G91002>`_.
+   from the "Alphabetic" property defined in the Unicode Standard.
 
 
 .. method:: str.isascii()
@@ -1805,7 +1798,7 @@ expression support in the :mod:`re` module).
    Return ``True`` if the string is a valid identifier according to the language
    definition, section :ref:`identifiers`.
 
-   :func:`keyword.iskeyword` can be used to test whether string ``s`` is a reserved
+   Call :func:`keyword.iskeyword` to test whether string ``s`` is a reserved
    identifier, such as :keyword:`def` and :keyword:`class`.
 
    Example:
@@ -1902,9 +1895,8 @@ expression support in the :mod:`re` module).
    Return a copy of the string with all the cased characters [4]_ converted to
    lowercase.
 
-   The lowercasing algorithm used is
-   `described in section 3.13 of the Unicode Standard
-   <https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G34078>`__.
+   The lowercasing algorithm used is described in section 3.13 of the Unicode
+   Standard.
 
 
 .. method:: str.lstrip([chars])
@@ -2248,9 +2240,8 @@ expression support in the :mod:`re` module).
    character(s) is not "Lu" (Letter, uppercase), but e.g. "Lt" (Letter,
    titlecase).
 
-   The uppercasing algorithm used is
-   `described in section 3.13 of the Unicode Standard
-   <https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G34078>`__.
+   The uppercasing algorithm used is described in section 3.13 of the Unicode
+   Standard.
 
 
 .. method:: str.zfill(width)
@@ -4471,7 +4462,6 @@ can be used interchangeably to index the same dictionary entry.
           >>> class Counter(dict):
           ...     def __missing__(self, key):
           ...         return 0
-          ...
           >>> c = Counter()
           >>> c['red']
           0
@@ -4715,9 +4705,7 @@ values are hashable, so that ``(key, value)`` pairs are unique and hashable,
 then the items view is also set-like.  (Values views are not treated as set-like
 since the entries are generally not unique.)  For set-like views, all of the
 operations defined for the abstract base class :class:`collections.abc.Set` are
-available (for example, ``==``, ``<``, or ``^``).  While using set operators,
-set-like views accept any iterable as the other operand, unlike sets which only
-accept sets as the input.
+available (for example, ``==``, ``<``, or ``^``).
 
 An example of dictionary view usage::
 
@@ -4729,7 +4717,6 @@ An example of dictionary view usage::
    >>> n = 0
    >>> for val in values:
    ...     n += val
-   ...
    >>> print(n)
    504
 
@@ -4750,8 +4737,6 @@ An example of dictionary view usage::
    {'bacon'}
    >>> keys ^ {'sausage', 'juice'}
    {'juice', 'sausage', 'bacon', 'spam'}
-   >>> keys | ['juice', 'juice', 'juice']
-   {'juice', 'sausage', 'bacon', 'spam', 'eggs'}
 
    >>> # get back a read-only proxy for the original dictionary
    >>> values.mapping
@@ -5624,7 +5609,7 @@ Recommended configuration
 The default :data:`sys.int_info.default_max_str_digits` is expected to be
 reasonable for most applications. If your application requires a different
 limit, set it from your main entry point using Python version agnostic code as
-these APIs were added in security patch releases in versions before 3.12.
+these APIs were added in security patch releases in versions before 3.11.
 
 Example::
 

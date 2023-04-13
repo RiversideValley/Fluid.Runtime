@@ -37,7 +37,6 @@ typedef struct {
     PyObject *msg;
     PyObject *name;
     PyObject *path;
-    PyObject *name_from;
 } PyImportErrorObject;
 
 typedef struct {
@@ -99,7 +98,6 @@ PyAPI_FUNC(void) _PyErr_GetExcInfo(PyThreadState *, PyObject **, PyObject **, Py
 /* Context manipulation (PEP 3134) */
 
 PyAPI_FUNC(void) _PyErr_ChainExceptions(PyObject *, PyObject *, PyObject *);
-PyAPI_FUNC(void) _PyErr_ChainExceptions1(PyObject *);
 
 /* Like PyErr_Format(), but saves current exception as __context__ and
    __cause__.
@@ -178,11 +176,4 @@ PyAPI_FUNC(void) _Py_NO_RETURN _Py_FatalErrorFormat(
     const char *format,
     ...);
 
-extern PyObject *_PyErr_SetImportErrorWithNameFrom(
-        PyObject *,
-        PyObject *,
-        PyObject *,
-        PyObject *);
-
-
-#define Py_FatalError(message) _Py_FatalErrorFunc(__func__, (message))
+#define Py_FatalError(message) _Py_FatalErrorFunc(__func__, message)

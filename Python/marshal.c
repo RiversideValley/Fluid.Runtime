@@ -240,7 +240,7 @@ w_PyLong(const PyLongObject *ob, char flag, WFILE *p)
     /* set l to number of base PyLong_MARSHAL_BASE digits */
     n = Py_ABS(Py_SIZE(ob));
     l = (n-1) * PyLong_MARSHAL_RATIO;
-    d = ob->long_value.ob_digit[n-1];
+    d = ob->ob_digit[n-1];
     assert(d != 0); /* a PyLong is always normalized */
     do {
         d >>= PyLong_MARSHAL_SHIFT;
@@ -254,14 +254,14 @@ w_PyLong(const PyLongObject *ob, char flag, WFILE *p)
     w_long((long)(Py_SIZE(ob) > 0 ? l : -l), p);
 
     for (i=0; i < n-1; i++) {
-        d = ob->long_value.ob_digit[i];
+        d = ob->ob_digit[i];
         for (j=0; j < PyLong_MARSHAL_RATIO; j++) {
             w_short(d & PyLong_MARSHAL_MASK, p);
             d >>= PyLong_MARSHAL_SHIFT;
         }
         assert (d == 0);
     }
-    d = ob->long_value.ob_digit[n-1];
+    d = ob->ob_digit[n-1];
     do {
         w_short(d & PyLong_MARSHAL_MASK, p);
         d >>= PyLong_MARSHAL_SHIFT;
@@ -326,8 +326,8 @@ w_ref(PyObject *v, char *flag, WFILE *p)
             goto err;
         }
         w = (int)s;
-        if (_Py_hashtable_set(p->hashtable, Py_NewRef(v),
-                              (void *)(uintptr_t)w) < 0) {
+        Py_INCREF(v);
+        if (_Py_hashtable_set(p->hashtable, v, (void *)(uintptr_t)w) < 0) {
             Py_DECREF(v);
             goto err;
         }
@@ -853,7 +853,7 @@ r_PyLong(RFILE *p)
                 goto bad_digit;
             d += (digit)md << j*PyLong_MARSHAL_SHIFT;
         }
-        ob->long_value.ob_digit[i] = d;
+        ob->ob_digit[i] = d;
     }
 
     d = 0;
@@ -880,7 +880,7 @@ r_PyLong(RFILE *p)
     }
     /* top digit should be nonzero, else the resulting PyLong won't be
        normalized */
-    ob->long_value.ob_digit[size-1] = d;
+    ob->ob_digit[size-1] = d;
     return (PyObject *)ob;
   bad_digit:
     Py_DECREF(ob);
@@ -951,7 +951,8 @@ r_ref_insert(PyObject *o, Py_ssize_t idx, int flag, RFILE *p)
 {
     if (o != NULL && flag) { /* currently only FLAG_REF is defined */
         PyObject *tmp = PyList_GET_ITEM(p->refs, idx);
-        PyList_SET_ITEM(p->refs, idx, Py_NewRef(o));
+        Py_INCREF(o);
+        PyList_SET_ITEM(p->refs, idx, o);
         Py_DECREF(tmp);
     }
     return o;
@@ -1014,23 +1015,28 @@ r_object(RFILE *p)
         break;
 
     case TYPE_NONE:
-        retval = Py_NewRef(Py_None);
+        Py_INCREF(Py_None);
+        retval = Py_None;
         break;
 
     case TYPE_STOPITER:
-        retval = Py_NewRef(PyExc_StopIteration);
+        Py_INCREF(PyExc_StopIteration);
+        retval = PyExc_StopIteration;
         break;
 
     case TYPE_ELLIPSIS:
-        retval = Py_NewRef(Py_Ellipsis);
+        Py_INCREF(Py_Ellipsis);
+        retval = Py_Ellipsis;
         break;
 
     case TYPE_FALSE:
-        retval = Py_NewRef(Py_False);
+        Py_INCREF(Py_False);
+        retval = Py_False;
         break;
 
     case TYPE_TRUE:
-        retval = Py_NewRef(Py_True);
+        Py_INCREF(Py_True);
+        retval = Py_True;
         break;
 
     case TYPE_INT:
@@ -1217,7 +1223,8 @@ r_object(RFILE *p)
                 if (!PyErr_Occurred())
                     PyErr_SetString(PyExc_TypeError,
                         "NULL object in marshal data for tuple");
-                Py_SETREF(v, NULL);
+                Py_DECREF(v);
+                v = NULL;
                 break;
             }
             PyTuple_SET_ITEM(v, i, v2);
@@ -1243,7 +1250,8 @@ r_object(RFILE *p)
                 if (!PyErr_Occurred())
                     PyErr_SetString(PyExc_TypeError,
                         "NULL object in marshal data for list");
-                Py_SETREF(v, NULL);
+                Py_DECREF(v);
+                v = NULL;
                 break;
             }
             PyList_SET_ITEM(v, i, v2);
@@ -1275,7 +1283,8 @@ r_object(RFILE *p)
             Py_DECREF(val);
         }
         if (PyErr_Occurred()) {
-            Py_SETREF(v, NULL);
+            Py_DECREF(v);
+            v = NULL;
         }
         retval = v;
         break;
@@ -1319,7 +1328,8 @@ r_object(RFILE *p)
                     if (!PyErr_Occurred())
                         PyErr_SetString(PyExc_TypeError,
                             "NULL object in marshal data for set");
-                    Py_SETREF(v, NULL);
+                    Py_DECREF(v);
+                    v = NULL;
                     break;
                 }
                 if (PySet_Add(v, v2) == -1) {
@@ -1476,7 +1486,8 @@ r_object(RFILE *p)
             PyErr_SetString(PyExc_ValueError, "bad marshal data (invalid reference)");
             break;
         }
-        retval = Py_NewRef(v);
+        Py_INCREF(v);
+        retval = v;
         break;
 
     default:

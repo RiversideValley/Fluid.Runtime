@@ -235,7 +235,8 @@ PyObject *args_tuple(PyObject *object,
     args = PyTuple_New(1 + (errors != NULL));
     if (args == NULL)
         return NULL;
-    PyTuple_SET_ITEM(args, 0, Py_NewRef(object));
+    Py_INCREF(object);
+    PyTuple_SET_ITEM(args,0,object);
     if (errors) {
         PyObject *v;
 
@@ -262,7 +263,8 @@ PyObject *codec_getitem(const char *encoding, int index)
         return NULL;
     v = PyTuple_GET_ITEM(codecs, index);
     Py_DECREF(codecs);
-    return Py_NewRef(v);
+    Py_INCREF(v);
+    return v;
 }
 
 /* Helper functions to create an incremental codec. */
@@ -428,7 +430,8 @@ _PyCodec_EncodeInternal(PyObject *object,
                         "encoder must return a tuple (object, integer)");
         goto onError;
     }
-    v = Py_NewRef(PyTuple_GET_ITEM(result,0));
+    v = PyTuple_GET_ITEM(result,0);
+    Py_INCREF(v);
     /* We don't check or use the second (integer) entry. */
 
     Py_DECREF(args);
@@ -472,7 +475,8 @@ _PyCodec_DecodeInternal(PyObject *object,
                         "decoder must return a tuple (object,integer)");
         goto onError;
     }
-    v = Py_NewRef(PyTuple_GET_ITEM(result,0));
+    v = PyTuple_GET_ITEM(result,0);
+    Py_INCREF(v);
     /* We don't check or use the second (integer) entry. */
 
     Py_DECREF(args);
@@ -567,7 +571,8 @@ PyObject *codec_getitem_checked(const char *encoding,
     if (codec == NULL)
         return NULL;
 
-    v = Py_NewRef(PyTuple_GET_ITEM(codec, index));
+    v = PyTuple_GET_ITEM(codec, index);
+    Py_INCREF(v);
     Py_DECREF(codec);
     return v;
 }

@@ -263,10 +263,6 @@ void _PyAST_Fini(PyInterpreterState *interp)
     Py_CLEAR(state->vararg);
     Py_CLEAR(state->withitem_type);
 
-    if (_PyInterpreterState_Get() == _PyInterpreterState_Main()) {
-        Py_CLEAR(_Py_CACHED_OBJECT(str_replace_inf));
-    }
-
 #if !defined(NDEBUG)
     state->initialized = -1;
 #else
@@ -997,11 +993,10 @@ static PyObject* ast2obj_list(struct ast_state *state, asdl_seq *seq, PyObject* 
 
 static PyObject* ast2obj_object(struct ast_state *Py_UNUSED(state), void *o)
 {
-    PyObject *op = (PyObject*)o;
-    if (!op) {
-        op = Py_None;
-    }
-    return Py_NewRef(op);
+    if (!o)
+        o = Py_None;
+    Py_INCREF((PyObject*)o);
+    return (PyObject*)o;
 }
 #define ast2obj_constant ast2obj_object
 #define ast2obj_identifier ast2obj_object
@@ -1023,11 +1018,9 @@ static int obj2ast_object(struct ast_state *Py_UNUSED(state), PyObject* obj, PyO
             *out = NULL;
             return -1;
         }
-        *out = Py_NewRef(obj);
+        Py_INCREF(obj);
     }
-    else {
-        *out = NULL;
-    }
+    *out = obj;
     return 0;
 }
 
@@ -1037,7 +1030,8 @@ static int obj2ast_constant(struct ast_state *Py_UNUSED(state), PyObject* obj, P
         *out = NULL;
         return -1;
     }
-    *out = Py_NewRef(obj);
+    Py_INCREF(obj);
+    *out = obj;
     return 0;
 }
 
@@ -4738,11 +4732,14 @@ PyObject* ast2obj_expr_context(struct ast_state *state, expr_context_ty o)
 {
     switch(o) {
         case Load:
-            return Py_NewRef(state->Load_singleton);
+            Py_INCREF(state->Load_singleton);
+            return state->Load_singleton;
         case Store:
-            return Py_NewRef(state->Store_singleton);
+            Py_INCREF(state->Store_singleton);
+            return state->Store_singleton;
         case Del:
-            return Py_NewRef(state->Del_singleton);
+            Py_INCREF(state->Del_singleton);
+            return state->Del_singleton;
     }
     Py_UNREACHABLE();
 }
@@ -4750,9 +4747,11 @@ PyObject* ast2obj_boolop(struct ast_state *state, boolop_ty o)
 {
     switch(o) {
         case And:
-            return Py_NewRef(state->And_singleton);
+            Py_INCREF(state->And_singleton);
+            return state->And_singleton;
         case Or:
-            return Py_NewRef(state->Or_singleton);
+            Py_INCREF(state->Or_singleton);
+            return state->Or_singleton;
     }
     Py_UNREACHABLE();
 }
@@ -4760,31 +4759,44 @@ PyObject* ast2obj_operator(struct ast_state *state, operator_ty o)
 {
     switch(o) {
         case Add:
-            return Py_NewRef(state->Add_singleton);
+            Py_INCREF(state->Add_singleton);
+            return state->Add_singleton;
         case Sub:
-            return Py_NewRef(state->Sub_singleton);
+            Py_INCREF(state->Sub_singleton);
+            return state->Sub_singleton;
         case Mult:
-            return Py_NewRef(state->Mult_singleton);
+            Py_INCREF(state->Mult_singleton);
+            return state->Mult_singleton;
         case MatMult:
-            return Py_NewRef(state->MatMult_singleton);
+            Py_INCREF(state->MatMult_singleton);
+            return state->MatMult_singleton;
         case Div:
-            return Py_NewRef(state->Div_singleton);
+            Py_INCREF(state->Div_singleton);
+            return state->Div_singleton;
         case Mod:
-            return Py_NewRef(state->Mod_singleton);
+            Py_INCREF(state->Mod_singleton);
+            return state->Mod_singleton;
         case Pow:
-            return Py_NewRef(state->Pow_singleton);
+            Py_INCREF(state->Pow_singleton);
+            return state->Pow_singleton;
         case LShift:
-            return Py_NewRef(state->LShift_singleton);
+            Py_INCREF(state->LShift_singleton);
+            return state->LShift_singleton;
         case RShift:
-            return Py_NewRef(state->RShift_singleton);
+            Py_INCREF(state->RShift_singleton);
+            return state->RShift_singleton;
         case BitOr:
-            return Py_NewRef(state->BitOr_singleton);
+            Py_INCREF(state->BitOr_singleton);
+            return state->BitOr_singleton;
         case BitXor:
-            return Py_NewRef(state->BitXor_singleton);
+            Py_INCREF(state->BitXor_singleton);
+            return state->BitXor_singleton;
         case BitAnd:
-            return Py_NewRef(state->BitAnd_singleton);
+            Py_INCREF(state->BitAnd_singleton);
+            return state->BitAnd_singleton;
         case FloorDiv:
-            return Py_NewRef(state->FloorDiv_singleton);
+            Py_INCREF(state->FloorDiv_singleton);
+            return state->FloorDiv_singleton;
     }
     Py_UNREACHABLE();
 }
@@ -4792,13 +4804,17 @@ PyObject* ast2obj_unaryop(struct ast_state *state, unaryop_ty o)
 {
     switch(o) {
         case Invert:
-            return Py_NewRef(state->Invert_singleton);
+            Py_INCREF(state->Invert_singleton);
+            return state->Invert_singleton;
         case Not:
-            return Py_NewRef(state->Not_singleton);
+            Py_INCREF(state->Not_singleton);
+            return state->Not_singleton;
         case UAdd:
-            return Py_NewRef(state->UAdd_singleton);
+            Py_INCREF(state->UAdd_singleton);
+            return state->UAdd_singleton;
         case USub:
-            return Py_NewRef(state->USub_singleton);
+            Py_INCREF(state->USub_singleton);
+            return state->USub_singleton;
     }
     Py_UNREACHABLE();
 }
@@ -4806,25 +4822,35 @@ PyObject* ast2obj_cmpop(struct ast_state *state, cmpop_ty o)
 {
     switch(o) {
         case Eq:
-            return Py_NewRef(state->Eq_singleton);
+            Py_INCREF(state->Eq_singleton);
+            return state->Eq_singleton;
         case NotEq:
-            return Py_NewRef(state->NotEq_singleton);
+            Py_INCREF(state->NotEq_singleton);
+            return state->NotEq_singleton;
         case Lt:
-            return Py_NewRef(state->Lt_singleton);
+            Py_INCREF(state->Lt_singleton);
+            return state->Lt_singleton;
         case LtE:
-            return Py_NewRef(state->LtE_singleton);
+            Py_INCREF(state->LtE_singleton);
+            return state->LtE_singleton;
         case Gt:
-            return Py_NewRef(state->Gt_singleton);
+            Py_INCREF(state->Gt_singleton);
+            return state->Gt_singleton;
         case GtE:
-            return Py_NewRef(state->GtE_singleton);
+            Py_INCREF(state->GtE_singleton);
+            return state->GtE_singleton;
         case Is:
-            return Py_NewRef(state->Is_singleton);
+            Py_INCREF(state->Is_singleton);
+            return state->Is_singleton;
         case IsNot:
-            return Py_NewRef(state->IsNot_singleton);
+            Py_INCREF(state->IsNot_singleton);
+            return state->IsNot_singleton;
         case In:
-            return Py_NewRef(state->In_singleton);
+            Py_INCREF(state->In_singleton);
+            return state->In_singleton;
         case NotIn:
-            return Py_NewRef(state->NotIn_singleton);
+            Py_INCREF(state->NotIn_singleton);
+            return state->NotIn_singleton;
     }
     Py_UNREACHABLE();
 }
@@ -5485,7 +5511,8 @@ obj2ast_mod(struct ast_state *state, PyObject* obj, mod_ty* out, PyArena* arena)
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Module' node")) {
                     goto failed;
                 }
@@ -5521,7 +5548,8 @@ obj2ast_mod(struct ast_state *state, PyObject* obj, mod_ty* out, PyArena* arena)
             if (type_ignores == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 type_ignore_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Module' node")) {
                     goto failed;
                 }
@@ -5569,7 +5597,8 @@ obj2ast_mod(struct ast_state *state, PyObject* obj, mod_ty* out, PyArena* arena)
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Interactive' node")) {
                     goto failed;
                 }
@@ -5647,7 +5676,8 @@ obj2ast_mod(struct ast_state *state, PyObject* obj, mod_ty* out, PyArena* arena)
             if (argtypes == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'FunctionType' node")) {
                     goto failed;
                 }
@@ -5843,7 +5873,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'FunctionDef' node")) {
                     goto failed;
                 }
@@ -5879,7 +5910,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (decorator_list == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'FunctionDef' node")) {
                     goto failed;
                 }
@@ -6002,7 +6034,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'AsyncFunctionDef' node")) {
                     goto failed;
                 }
@@ -6038,7 +6071,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (decorator_list == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'AsyncFunctionDef' node")) {
                     goto failed;
                 }
@@ -6144,7 +6178,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (bases == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'ClassDef' node")) {
                     goto failed;
                 }
@@ -6180,7 +6215,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (keywords == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 keyword_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'ClassDef' node")) {
                     goto failed;
                 }
@@ -6216,7 +6252,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'ClassDef' node")) {
                     goto failed;
                 }
@@ -6252,7 +6289,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (decorator_list == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'ClassDef' node")) {
                     goto failed;
                 }
@@ -6332,7 +6370,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (targets == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Delete' node")) {
                     goto failed;
                 }
@@ -6383,7 +6422,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (targets == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Assign' node")) {
                     goto failed;
                 }
@@ -6654,7 +6694,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'For' node")) {
                     goto failed;
                 }
@@ -6690,7 +6731,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (orelse == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'For' node")) {
                     goto failed;
                 }
@@ -6794,7 +6836,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'AsyncFor' node")) {
                     goto failed;
                 }
@@ -6830,7 +6873,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (orelse == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'AsyncFor' node")) {
                     goto failed;
                 }
@@ -6916,7 +6960,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'While' node")) {
                     goto failed;
                 }
@@ -6952,7 +6997,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (orelse == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'While' node")) {
                     goto failed;
                 }
@@ -7020,7 +7066,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'If' node")) {
                     goto failed;
                 }
@@ -7056,7 +7103,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (orelse == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'If' node")) {
                     goto failed;
                 }
@@ -7107,7 +7155,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (items == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 withitem_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'With' node")) {
                     goto failed;
                 }
@@ -7143,7 +7192,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'With' node")) {
                     goto failed;
                 }
@@ -7211,7 +7261,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (items == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 withitem_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'AsyncWith' node")) {
                     goto failed;
                 }
@@ -7247,7 +7298,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'AsyncWith' node")) {
                     goto failed;
                 }
@@ -7331,7 +7383,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (cases == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 match_case_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Match' node")) {
                     goto failed;
                 }
@@ -7431,7 +7484,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Try' node")) {
                     goto failed;
                 }
@@ -7467,7 +7521,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (handlers == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 excepthandler_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Try' node")) {
                     goto failed;
                 }
@@ -7503,7 +7558,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (orelse == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Try' node")) {
                     goto failed;
                 }
@@ -7539,7 +7595,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (finalbody == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Try' node")) {
                     goto failed;
                 }
@@ -7591,7 +7648,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'TryStar' node")) {
                     goto failed;
                 }
@@ -7627,7 +7685,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (handlers == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 excepthandler_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'TryStar' node")) {
                     goto failed;
                 }
@@ -7663,7 +7722,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (orelse == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'TryStar' node")) {
                     goto failed;
                 }
@@ -7699,7 +7759,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (finalbody == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'TryStar' node")) {
                     goto failed;
                 }
@@ -7796,7 +7857,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (names == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 alias_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Import' node")) {
                     goto failed;
                 }
@@ -7864,7 +7926,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (names == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 alias_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'ImportFrom' node")) {
                     goto failed;
                 }
@@ -7930,7 +7993,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (names == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 identifier val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Global' node")) {
                     goto failed;
                 }
@@ -7979,7 +8043,8 @@ obj2ast_stmt(struct ast_state *state, PyObject* obj, stmt_ty* out, PyArena*
             if (names == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 identifier val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Nonlocal' node")) {
                     goto failed;
                 }
@@ -8204,7 +8269,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (values == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'BoolOp' node")) {
                     goto failed;
                 }
@@ -8530,7 +8596,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (keys == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Dict' node")) {
                     goto failed;
                 }
@@ -8566,7 +8633,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (values == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Dict' node")) {
                     goto failed;
                 }
@@ -8615,7 +8683,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (elts == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Set' node")) {
                     goto failed;
                 }
@@ -8682,7 +8751,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (generators == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 comprehension_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'ListComp' node")) {
                     goto failed;
                 }
@@ -8749,7 +8819,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (generators == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 comprehension_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'SetComp' node")) {
                     goto failed;
                 }
@@ -8834,7 +8905,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (generators == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 comprehension_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'DictComp' node")) {
                     goto failed;
                 }
@@ -8901,7 +8973,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (generators == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 comprehension_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'GeneratorExp' node")) {
                     goto failed;
                 }
@@ -9059,7 +9132,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (ops == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 cmpop_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Compare' node")) {
                     goto failed;
                 }
@@ -9095,7 +9169,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (comparators == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Compare' node")) {
                     goto failed;
                 }
@@ -9163,7 +9238,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (args == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Call' node")) {
                     goto failed;
                 }
@@ -9199,7 +9275,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (keywords == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 keyword_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Call' node")) {
                     goto failed;
                 }
@@ -9315,7 +9392,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (values == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'JoinedStr' node")) {
                     goto failed;
                 }
@@ -9641,7 +9719,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (elts == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'List' node")) {
                     goto failed;
                 }
@@ -9708,7 +9787,8 @@ obj2ast_expr(struct ast_state *state, PyObject* obj, expr_ty* out, PyArena*
             if (elts == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'Tuple' node")) {
                     goto failed;
                 }
@@ -10194,7 +10274,8 @@ obj2ast_comprehension(struct ast_state *state, PyObject* obj, comprehension_ty*
         if (ifs == NULL) goto failed;
         for (i = 0; i < len; i++) {
             expr_ty val;
-            PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+            PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+            Py_INCREF(tmp2);
             if (_Py_EnterRecursiveCall(" while traversing 'comprehension' node")) {
                 goto failed;
             }
@@ -10383,7 +10464,8 @@ obj2ast_excepthandler(struct ast_state *state, PyObject* obj, excepthandler_ty*
             if (body == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 stmt_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'ExceptHandler' node")) {
                     goto failed;
                 }
@@ -10444,7 +10526,8 @@ obj2ast_arguments(struct ast_state *state, PyObject* obj, arguments_ty* out,
         if (posonlyargs == NULL) goto failed;
         for (i = 0; i < len; i++) {
             arg_ty val;
-            PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+            PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+            Py_INCREF(tmp2);
             if (_Py_EnterRecursiveCall(" while traversing 'arguments' node")) {
                 goto failed;
             }
@@ -10480,7 +10563,8 @@ obj2ast_arguments(struct ast_state *state, PyObject* obj, arguments_ty* out,
         if (args == NULL) goto failed;
         for (i = 0; i < len; i++) {
             arg_ty val;
-            PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+            PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+            Py_INCREF(tmp2);
             if (_Py_EnterRecursiveCall(" while traversing 'arguments' node")) {
                 goto failed;
             }
@@ -10533,7 +10617,8 @@ obj2ast_arguments(struct ast_state *state, PyObject* obj, arguments_ty* out,
         if (kwonlyargs == NULL) goto failed;
         for (i = 0; i < len; i++) {
             arg_ty val;
-            PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+            PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+            Py_INCREF(tmp2);
             if (_Py_EnterRecursiveCall(" while traversing 'arguments' node")) {
                 goto failed;
             }
@@ -10569,7 +10654,8 @@ obj2ast_arguments(struct ast_state *state, PyObject* obj, arguments_ty* out,
         if (kw_defaults == NULL) goto failed;
         for (i = 0; i < len; i++) {
             expr_ty val;
-            PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+            PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+            Py_INCREF(tmp2);
             if (_Py_EnterRecursiveCall(" while traversing 'arguments' node")) {
                 goto failed;
             }
@@ -10622,7 +10708,8 @@ obj2ast_arguments(struct ast_state *state, PyObject* obj, arguments_ty* out,
         if (defaults == NULL) goto failed;
         for (i = 0; i < len; i++) {
             expr_ty val;
-            PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+            PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+            Py_INCREF(tmp2);
             if (_Py_EnterRecursiveCall(" while traversing 'arguments' node")) {
                 goto failed;
             }
@@ -11141,7 +11228,8 @@ obj2ast_match_case(struct ast_state *state, PyObject* obj, match_case_ty* out,
         if (body == NULL) goto failed;
         for (i = 0; i < len; i++) {
             stmt_ty val;
-            PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+            PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+            Py_INCREF(tmp2);
             if (_Py_EnterRecursiveCall(" while traversing 'match_case' node")) {
                 goto failed;
             }
@@ -11337,7 +11425,8 @@ obj2ast_pattern(struct ast_state *state, PyObject* obj, pattern_ty* out,
             if (patterns == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 pattern_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'MatchSequence' node")) {
                     goto failed;
                 }
@@ -11388,7 +11477,8 @@ obj2ast_pattern(struct ast_state *state, PyObject* obj, pattern_ty* out,
             if (keys == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 expr_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'MatchMapping' node")) {
                     goto failed;
                 }
@@ -11424,7 +11514,8 @@ obj2ast_pattern(struct ast_state *state, PyObject* obj, pattern_ty* out,
             if (patterns == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 pattern_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'MatchMapping' node")) {
                     goto failed;
                 }
@@ -11510,7 +11601,8 @@ obj2ast_pattern(struct ast_state *state, PyObject* obj, pattern_ty* out,
             if (patterns == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 pattern_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'MatchClass' node")) {
                     goto failed;
                 }
@@ -11546,7 +11638,8 @@ obj2ast_pattern(struct ast_state *state, PyObject* obj, pattern_ty* out,
             if (kwd_attrs == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 identifier val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'MatchClass' node")) {
                     goto failed;
                 }
@@ -11582,7 +11675,8 @@ obj2ast_pattern(struct ast_state *state, PyObject* obj, pattern_ty* out,
             if (kwd_patterns == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 pattern_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'MatchClass' node")) {
                     goto failed;
                 }
@@ -11710,7 +11804,8 @@ obj2ast_pattern(struct ast_state *state, PyObject* obj, pattern_ty* out,
             if (patterns == NULL) goto failed;
             for (i = 0; i < len; i++) {
                 pattern_ty val;
-                PyObject *tmp2 = Py_NewRef(PyList_GET_ITEM(tmp, i));
+                PyObject *tmp2 = PyList_GET_ITEM(tmp, i);
+                Py_INCREF(tmp2);
                 if (_Py_EnterRecursiveCall(" while traversing 'MatchOr' node")) {
                     goto failed;
                 }
@@ -12220,6 +12315,7 @@ PyObject* PyAST_mod2obj(mod_ty t)
         return NULL;
     }
 
+    int recursion_limit = Py_GetRecursionLimit();
     int starting_recursion_depth;
     /* Be careful here to prevent overflow. */
     int COMPILER_STACK_FRAME_SCALE = 3;
@@ -12227,9 +12323,11 @@ PyObject* PyAST_mod2obj(mod_ty t)
     if (!tstate) {
         return 0;
     }
-    state->recursion_limit = C_RECURSION_LIMIT * COMPILER_STACK_FRAME_SCALE;
-    int recursion_depth = C_RECURSION_LIMIT - tstate->c_recursion_remaining;
-    starting_recursion_depth = recursion_depth * COMPILER_STACK_FRAME_SCALE;
+    state->recursion_limit = (recursion_limit < INT_MAX / COMPILER_STACK_FRAME_SCALE) ?
+        recursion_limit * COMPILER_STACK_FRAME_SCALE : recursion_limit;
+    int recursion_depth = tstate->recursion_limit - tstate->recursion_remaining;
+    starting_recursion_depth = (recursion_depth < INT_MAX / COMPILER_STACK_FRAME_SCALE) ?
+        recursion_depth * COMPILER_STACK_FRAME_SCALE : recursion_depth;
     state->recursion_depth = starting_recursion_depth;
 
     PyObject *result = ast2obj_mod(state, t);

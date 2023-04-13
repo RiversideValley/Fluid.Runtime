@@ -255,7 +255,11 @@ _setException(PyObject *exc, const char* altmsg, ...)
     const char *lib, *func, *reason;
     va_list vargs;
 
+#ifdef HAVE_STDARG_PROTOTYPES
     va_start(vargs, altmsg);
+#else
+    va_start(vargs);
+#endif
     if (!errcode) {
         if (altmsg == NULL) {
             PyErr_SetString(exc, "no reason supplied");
@@ -356,7 +360,7 @@ py_digest_by_name(PyObject *module, const char *name, enum Py_hash_type py_ht)
         }
     }
     if (digest == NULL) {
-        _setException(PyExc_ValueError, "unsupported hash type %s", name);
+        _setException(state->unsupported_digestmod_error, "unsupported hash type %s", name);
         return NULL;
     }
     return digest;

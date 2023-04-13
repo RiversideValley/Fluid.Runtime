@@ -141,9 +141,8 @@ Module Contents
    :func:`global_enum`
 
       Modify the :class:`str() <str>` and :func:`repr` of an enum
-      to show its members as belonging to the module instead of its class.
-      Should only be used if the enum members will be exported to the
-      module global namespace.
+      to show its members as belonging to the module instead of its class,
+      and export the enum members to the global namespace.
 
    :func:`show_flag_values`
 
@@ -170,6 +169,27 @@ Data Types
    final *enum*, as well as creating the enum members, properly handling
    duplicates, providing iteration over the enum class, etc.
 
+   .. method:: EnumType.__call__(cls, value, names=None, *, module=None, qualname=None, type=None, start=1, boundary=None)
+
+      This method is called in two different ways:
+
+      * to look up an existing member:
+
+         :cls:   The enum class being called.
+         :value: The value to lookup.
+
+      * to use the ``cls`` enum to create a new enum (only if the existing enum
+        does not have any members):
+
+         :cls:   The enum class being called.
+         :value: The name of the new Enum to create.
+         :names: The names/values of the members for the new Enum.
+         :module:    The name of the module the new Enum is created in.
+         :qualname:  The actual location in the module where this Enum can be found.
+         :type:  A mix-in type for the new Enum.
+         :start: The first integer value for the Enum (used by :class:`auto`).
+         :boundary:  How to handle out-of-range values from bit operations (:class:`Flag` only).
+
    .. method:: EnumType.__contains__(cls, member)
 
       Returns ``True`` if member belongs to the ``cls``::
@@ -191,6 +211,13 @@ Data Types
 
         >>> dir(Color)
         ['BLUE', 'GREEN', 'RED', '__class__', '__contains__', '__doc__', '__getitem__', '__init_subclass__', '__iter__', '__len__', '__members__', '__module__', '__name__', '__qualname__']
+
+   .. method:: EnumType.__getattr__(cls, name)
+
+      Returns the Enum member in *cls* matching *name*, or raises an :exc:`AttributeError`::
+
+        >>> Color.GREEN
+        <Color.GREEN: 2>
 
    .. method:: EnumType.__getitem__(cls, name)
 
@@ -255,26 +282,6 @@ Data Types
       names will also be removed from the completed enumeration.  See
       :ref:`TimePeriod <enum-time-period>` for an example.
 
-   .. method:: Enum.__call__(cls, value, names=None, *, module=None, qualname=None, type=None, start=1, boundary=None)
-
-      This method is called in two different ways:
-
-      * to look up an existing member:
-
-         :cls:   The enum class being called.
-         :value: The value to lookup.
-
-      * to use the ``cls`` enum to create a new enum:
-
-         :cls:   The enum class being called.
-         :value: The name of the new Enum to create.
-         :names: The names/values of the members for the new Enum.
-         :module:    The name of the module the new Enum is created in.
-         :qualname:  The actual location in the module where this Enum can be found.
-         :type:  A mix-in type for the new Enum.
-         :start: The first integer value for the Enum (used by :class:`auto`).
-         :boundary:  How to handle out-of-range values from bit operations (:class:`Flag` only).
-
    .. method:: Enum.__dir__(self)
 
       Returns ``['__class__', '__doc__', '__module__', 'name', 'value']`` and
@@ -292,7 +299,6 @@ Data Types
          ...     @classmethod
          ...     def today(cls):
          ...         print('today is %s' % cls(date.today().isoweekday()).name)
-         ...
          >>> dir(Weekday.SATURDAY)
          ['__class__', '__doc__', '__eq__', '__hash__', '__module__', 'name', 'today', 'value']
 
@@ -313,7 +319,6 @@ Data Types
          ...         return 3 ** (count + 1)
          ...     FIRST = auto()
          ...     SECOND = auto()
-         ...
          >>> PowersOfThree.SECOND.value
          9
 
@@ -338,7 +343,6 @@ Data Types
          ...             if member.value == value:
          ...                 return member
          ...         return None
-         ...
          >>> Build.DEBUG.value
          'debug'
          >>> Build('deBUG')
@@ -356,7 +360,6 @@ Data Types
          ...     def __repr__(self):
          ...         cls_name = self.__class__.__name__
          ...         return f'{cls_name}.{self.name}'
-         ...
          >>> OtherStyle.ALTERNATE, str(OtherStyle.ALTERNATE), f"{OtherStyle.ALTERNATE}"
          (OtherStyle.ALTERNATE, 'OtherStyle.ALTERNATE', 'OtherStyle.ALTERNATE')
 
@@ -371,7 +374,6 @@ Data Types
          ...     SOMETHING_ELSE = auto()
          ...     def __str__(self):
          ...         return f'{self.name}'
-         ...
          >>> OtherStyle.ALTERNATE, str(OtherStyle.ALTERNATE), f"{OtherStyle.ALTERNATE}"
          (<OtherStyle.ALTERNATE: 1>, 'ALTERNATE', 'ALTERNATE')
 
@@ -386,7 +388,6 @@ Data Types
          ...     SOMETHING_ELSE = auto()
          ...     def __format__(self, spec):
          ...         return f'{self.name}'
-         ...
          >>> OtherStyle.ALTERNATE, str(OtherStyle.ALTERNATE), f"{OtherStyle.ALTERNATE}"
          (<OtherStyle.ALTERNATE: 1>, 'OtherStyle.ALTERNATE', 'ALTERNATE')
 
@@ -394,8 +395,6 @@ Data Types
 
       Using :class:`auto` with :class:`Enum` results in integers of increasing value,
       starting with ``1``.
-
-   .. versionchanged:: 3.12 Added :ref:`enum-dataclass-support`
 
 
 .. class:: IntEnum
@@ -409,7 +408,6 @@ Data Types
       ...     ONE = 1
       ...     TWO = 2
       ...     THREE = 3
-      ...
       >>> Numbers.THREE
       <Numbers.THREE: 3>
       >>> Numbers.ONE + Numbers.TWO
@@ -470,7 +468,6 @@ Data Types
          ...     RED = auto()
          ...     GREEN = auto()
          ...     BLUE = auto()
-         ...
          >>> purple = Color.RED | Color.BLUE
          >>> white = Color.RED | Color.GREEN | Color.BLUE
          >>> Color.GREEN in purple
@@ -578,7 +575,6 @@ Data Types
       ...     RED = auto()
       ...     GREEN = auto()
       ...     BLUE = auto()
-      ...
       >>> Color.RED & 2
       <Color: 0>
       >>> Color.RED | 2
@@ -703,7 +699,6 @@ Data Types
          ...     RED = auto()
          ...     GREEN = auto()
          ...     BLUE = auto()
-         ...
          >>> StrictFlag(2**2 + 2**4)
          Traceback (most recent call last):
          ...
@@ -721,35 +716,31 @@ Data Types
          ...     RED = auto()
          ...     GREEN = auto()
          ...     BLUE = auto()
-         ...
          >>> ConformFlag(2**2 + 2**4)
          <ConformFlag.BLUE: 4>
 
    .. attribute:: EJECT
 
       Out-of-range values lose their *Flag* membership and revert to :class:`int`.
-      This is the default for :class:`IntFlag`::
 
          >>> from enum import Flag, EJECT, auto
          >>> class EjectFlag(Flag, boundary=EJECT):
          ...     RED = auto()
          ...     GREEN = auto()
          ...     BLUE = auto()
-         ...
          >>> EjectFlag(2**2 + 2**4)
          20
 
    .. attribute:: KEEP
 
-      Out-of-range values are kept, and the *Flag* membership is kept. This is
-      used for some stdlib flags::
+      Out-of-range values are kept, and the *Flag* membership is kept.
+      This is the default for :class:`IntFlag`::
 
          >>> from enum import Flag, KEEP, auto
          >>> class KeepFlag(Flag, boundary=KEEP):
          ...     RED = auto()
          ...     GREEN = auto()
          ...     BLUE = auto()
-         ...
          >>> KeepFlag(2**2 + 2**4)
          <KeepFlag.BLUE|16: 20>
 

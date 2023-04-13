@@ -41,9 +41,16 @@ For a summary of deprecated features and a deprecation timeline, please see
 
 .. seealso::
 
+   For a quick overview of type hints, refer to
+   `this cheat sheet <https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html>`_.
+
+   The "Type System Reference" section of https://mypy.readthedocs.io/ -- since
+   the Python typing system is standardised via PEPs, this reference should
+   broadly apply to most Python type checkers, although some parts may still be
+   specific to mypy.
+
    The documentation at https://typing.readthedocs.io/ serves as useful reference
    for type system features, useful typing related tools and typing best practices.
-
 
 .. _relevant-peps:
 
@@ -1343,7 +1350,7 @@ These are not used in annotations. They are building blocks for creating generic
 
         x: Ts          # Not valid
         x: tuple[Ts]   # Not valid
-        x: tuple[*Ts]  # The correct way to to do it
+        x: tuple[*Ts]  # The correct way to do it
 
     Type variable tuples can be used in the same contexts as normal type
     variables. For example, in class definitions, arguments, and return types::
@@ -1582,15 +1589,31 @@ These are not used in annotations. They are building blocks for creating generic
 
       assert isinstance(open('/some/file'), Closable)
 
+      @runtime_checkable
+      class Named(Protocol):
+          name: str
+
+      import threading
+      assert isinstance(threading.Thread(name='Bob'), Named)
+
    .. note::
 
-        :func:`runtime_checkable` will check only the presence of the required
-        methods, not their type signatures. For example, :class:`ssl.SSLObject`
+        :func:`!runtime_checkable` will check only the presence of the required
+        methods or attributes, not their type signatures or types.
+        For example, :class:`ssl.SSLObject`
         is a class, therefore it passes an :func:`issubclass`
         check against :data:`Callable`.  However, the
-        :meth:`ssl.SSLObject.__init__` method exists only to raise a
+        ``ssl.SSLObject.__init__`` method exists only to raise a
         :exc:`TypeError` with a more informative message, therefore making
         it impossible to call (instantiate) :class:`ssl.SSLObject`.
+
+   .. note::
+
+        An :func:`isinstance` check against a runtime-checkable protocol can be
+        surprisingly slow compared to an ``isinstance()`` check against
+        a non-protocol class. Consider using alternative idioms such as
+        :func:`hasattr` calls for structural checks in performance-sensitive
+        code.
 
    .. versionadded:: 3.8
 
@@ -2233,9 +2256,6 @@ Corresponding to other types in :mod:`collections.abc`
 
    An alias to :class:`collections.abc.Hashable`.
 
-   .. deprecated:: 3.12
-      Use :class:`collections.abc.Hashable` directly instead.
-
 .. class:: Reversible(Iterable[T_co])
 
    A generic version of :class:`collections.abc.Reversible`.
@@ -2247,9 +2267,6 @@ Corresponding to other types in :mod:`collections.abc`
 .. class:: Sized
 
    An alias to :class:`collections.abc.Sized`.
-
-   .. deprecated:: 3.12
-      Use :class:`collections.abc.Sized` directly instead.
 
 Asynchronous programming
 """"""""""""""""""""""""
@@ -2575,10 +2592,6 @@ Functions and decorators
      assumed to be True or False if it is omitted by the caller.
    * ``kw_only_default`` indicates whether the ``kw_only`` parameter is
      assumed to be True or False if it is omitted by the caller.
-   * ``frozen_default`` indicates whether the ``frozen`` parameter is
-     assumed to be True or False if it is omitted by the caller.
-
-     .. versionadded:: 3.12
    * ``field_specifiers`` specifies a static list of supported classes
      or functions that describe fields, similar to ``dataclasses.field()``.
    * Arbitrary other keyword arguments are accepted in order to allow for
@@ -2879,7 +2892,4 @@ convenience. This is subject to change, and not all deprecations are listed.
 |  collections                     |               |                   |                |
 +----------------------------------+---------------+-------------------+----------------+
 |  ``typing.Text``                 | 3.11          | Undecided         | :gh:`92332`    |
-+----------------------------------+---------------+-------------------+----------------+
-|  ``typing.Hashable`` and         | 3.12          | Undecided         | :gh:`94309`    |
-|  ``typing.Sized``                |               |                   |                |
 +----------------------------------+---------------+-------------------+----------------+
